@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kitchen Conversation</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; overflow: hidden; font-family: 'Courier New', monospace; width: 100vw; height: 100vh; }
+  #canvas { display: block; width: 100%; height: 100%; cursor: default; }
+  #hud { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+  #tooltip {
+    position: fixed; pointer-events: none;
+    background: rgba(0,20,40,0.9); border: 1px solid #00eeff;
+    color: #00eeff; padding: 6px 12px; border-radius: 4px;
+    font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
+    box-shadow: 0 0 12px rgba(0,238,255,0.4);
+    transition: opacity 0.2s; opacity: 0; white-space: nowrap; z-index: 20;
+  }
+  #info-panel {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,10,25,0.92); border: 1px solid #00eeff;
+    color: #a0f0ff; padding: 16px 24px; border-radius: 8px;
+    font-size: 14px; line-height: 1.6; max-width: 360px; width: 90%;
+    box-shadow: 0 0 24px rgba(0,238,255,0.3), inset 0 0 16px rgba(0,100,160,0.1);
+    display: none; z-index: 20; pointer-events: auto;
+    text-align: center; letter-spacing: 0.5px; animation: panelIn 0.3s ease;
+  }
+  #info-panel .panel-title { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: #00eeff; margin-bottom: 8px; opacity: 0.7; }
+  #info-panel .close-btn { position: absolute; top: 8px; right: 12px; color: #00eeff; cursor: pointer; font-size: 16px; opacity: 0.6; }
+  #info-panel .close-btn:hover { opacity: 1; }
+  @keyframes panelIn { from { opacity: 0; transform: translateX(-50%) translateY(12px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+  #dialogue-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 30; cursor: pointer; display: none; }
+  #dialogue-box {
+    position: fixed; bottom: 0; left: 0; width: 100%; padding: 20px 24px 24px;
+    background: linear-gradient(to top, rgba(0,5,15,0.97) 0%, rgba(0,5,15,0.85) 80%, transparent 100%);
+    pointer-events: none;
+  }
+  #speaker-name { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 8px; transition: color 0.3s; }
+  #dialogue-text { font-size: clamp(14px, 3.5vw, 18px); line-height: 1.7; color: #e8f8ff; min-height: 2.5em; text-shadow: 0 0 8px rgba(0,238,255,0.3); }
+  #dialogue-hint { font-size: 10px; color: rgba(0,238,255,0.4); letter-spacing: 2px; margin-top: 12px; text-align: right; text-transform: uppercase; animation: blink 1.4s infinite; }
+  @keyframes blink { 0%,100%{opacity:0.4} 50%{opacity:1} }
+  #narration-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0); display: none; z-index: 40;
+    align-items: center; justify-content: center; flex-direction: column;
+    cursor: pointer; transition: background 0.8s;
+  }
+  #narration-overlay.active { background: rgba(0,0,8,0.85); display: flex; }
+  #narration-text { color: #a0d8ef; font-size: clamp(15px, 3.5vw, 22px); line-height: 1.9; text-align: center; max-width: 500px; padding: 0 30px; letter-spacing: 0.5px; text-shadow: 0 0 20px rgba(0,200,255,0.4); opacity: 0; transition: opacity 0.6s; }
+  #narration-text.visible { opacity: 1; }
+  #narration-hint { font-size: 10px; color: rgba(0,238,255,0.4); letter-spacing: 3px; margin-top: 30px; text-transform: uppercase; animation: blink 1.4s infinite; opacity: 0; transition: opacity 0.5s; }
+  #narration-hint.visible { opacity: 1; }
+  #scanlines { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px); pointer-events: none; z-index: 50; opacity: 0.4; }
+  #intro { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 60; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; transition: opacity 1s; }
+  #intro h1 { font-size: clamp(20px, 5vw, 36px); letter-spacing: 6px; color: #00eeff; text-transform: uppercase; text-shadow: 0 0 30px rgba(0,238,255,0.8); animation: glitch 3s infinite; }
+  #intro p { color: rgba(0,238,255,0.5); font-size: 11px; letter-spacing: 3px; text-transform: uppercase; }
+  #intro-btn { margin-top: 20px; padding: 10px 28px; background: transparent; border: 1px solid #00eeff; color: #00eeff; font-family: 'Courier New', monospace; font-size: 12px; letter-spacing: 3px; text-transform: uppercase; cursor: pointer; transition: all 0.3s; box-shadow: 0 0 12px rgba(0,238,255,0.3); }
+  #intro-btn:hover { background: rgba(0,238,255,0.1); box-shadow: 0 0 24px rgba(0,238,255,0.6); }
+  @keyframes glitch { 0%,95%,100% { text-shadow: 0 0 30px rgba(0,238,255,0.8); } 96% { text-shadow: 2px 0 30px rgba(255,0,0,0.8), -2px 0 30px rgba(0,238,255,0.8); } 97% { text-shadow: -2px 0 30px rgba(0,238,255,0.8); } }
+  #progress { position: fixed; top: 16px; right: 16px; display: flex; gap: 6px; z-index: 20; pointer-events: none; }
+  .pdot { width: 6px; height: 6px; border-radius: 50%; border: 1px solid rgba(0,238,255,0.4); transition: all 0.3s; }
+  .pdot.done { background: #00eeff; box-shadow: 0 0 8px #00eeff; border-color: #00eeff; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="scanlines"></div>
+<div id="hud">
+  <div id="tooltip"></div>
+  <div id="info-panel">
+    <div class="panel-title" id="panel-title">Object</div>
+    <span class="close-btn" id="close-panel">✕</span>
+    <div id="panel-text"></div>
+  </div>
+  <div id="progress">
+    <div class="pdot" id="dot0"></div>
+    <div class="pdot" id="dot1"></div>
+    <div class="pdot" id="dot2"></div>
+  </div>
+</div>
+<div id="dialogue-overlay">
+  <div id="dialogue-box">
+    <div id="speaker-name"></div>
+    <div id="dialogue-text"></div>
+    <div id="dialogue-hint">tap anywhere to continue</div>
+  </div>
+</div>
+<div id="narration-overlay">
+  <div id="narration-text"></div>
+  <div id="narration-hint">tap to continue</div>
+</div>
+<div id="intro">
+  <h1>Kitchen Story</h1>
+  <p>An interactive neon narrative</p>
+  <button id="intro-btn">Enter Scene</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const state = {
+  dialogueActive: false, dialogueIndex: 0,
+  scene1Done: false, scene2Done: false, scene3Done: false,
+  hoveredObj: null, focusedObj: null,
+  narrationActive: false, narrationLines: [], narrationIdx: 0,
+  interactionLocked: false,
+};
+try {
+  const saved = JSON.parse(localStorage.getItem('kitchenStory') || '{}');
+  if (saved.scene1Done) state.scene1Done = true;
+  if (saved.scene2Done) state.scene2Done = true;
+  if (saved.scene3Done) state.scene3Done = true;
+} catch(e){}
+function saveState() {
+  localStorage.setItem('kitchenStory', JSON.stringify({
+    scene1Done: state.scene1Done, scene2Done: state.scene2Done, scene3Done: state.scene3Done,
+  }));
+}
+
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x00000a);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x00000a, 0.035);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
+// Shifted camera so left wall (door) is visible
+camera.position.set(16, 16, 10);
+camera.lookAt(0, 0, -1);
+
+const camTarget = {
+  pos: new THREE.Vector3(16, 16, 10),
+  look: new THREE.Vector3(0, 0, -1),
+  posDefault: new THREE.Vector3(16, 16, 10),
+  lookDefault: new THREE.Vector3(0, 0, -1),
+};
+
+function wireMat(color, opacity = 1) {
+  return new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: opacity < 1, opacity });
+}
+
+function box(w, h, d, mat, x = 0, y = 0, z = 0) {
+  const g = new THREE.BoxGeometry(w, h, d);
+  const m = new THREE.Mesh(g, mat.clone ? mat.clone() : mat);
+  m.position.set(x, y, z);
+  return m;
+}
+function addEdges(mesh, color = 0x00ccff, opacity = 0.6) {
+  const eg = new THREE.EdgesGeometry(mesh.geometry);
+  const em = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color, transparent: true, opacity }));
+  em.position.copy(mesh.position);
+  em.rotation.copy(mesh.rotation);
+  em.scale.copy(mesh.scale);
+  scene.add(em);
+  return em;
+}
+
+const interactives = [];
+
+// FLOOR
+const floor = box(22, 0.1, 18, wireMat(0x001a2a, 0.3), 0, -0.05, 0);
+scene.add(floor); addEdges(floor, 0x003355, 0.4);
+const gridHelper = new THREE.GridHelper(22, 22, 0x002244, 0x001a33);
+gridHelper.material.opacity = 0.3; gridHelper.material.transparent = true;
+scene.add(gridHelper);
+
+// WALLS
+const wallBack = box(22, 10, 0.15, wireMat(0x003355, 0.2), 0, 5, -9);
+scene.add(wallBack); addEdges(wallBack, 0x004466, 0.3);
+const wallLeft = box(0.15, 10, 18, wireMat(0x003355, 0.2), -11, 5, 0);
+scene.add(wallLeft); addEdges(wallLeft, 0x004466, 0.3);
+
+// Ceiling beams
+for (let i = -8; i <= 8; i += 4) {
+  const beam = box(0.2, 0.2, 18, wireMat(0x0044aa, 0.5), i, 10, 0);
+  scene.add(beam); addEdges(beam, 0x0066cc, 0.6);
+}
+for (let i = -8; i <= 8; i += 4) {
+  const beam2 = box(22, 0.2, 0.2, wireMat(0x0044aa, 0.5), 0, 10, i);
+  scene.add(beam2); addEdges(beam2, 0x0066cc, 0.6);
+}
+for (let z = -6; z <= 6; z += 6) {
+  const pts = [new THREE.Vector3(-9, 10, z), new THREE.Vector3(0, 13.5, z), new THREE.Vector3(9, 10, z)];
+  const trussGeo = new THREE.BufferGeometry().setFromPoints([pts[0], pts[1], pts[1], pts[2], pts[2], pts[0]]);
+  scene.add(new THREE.LineSegments(trussGeo, new THREE.LineBasicMaterial({ color: 0x0055aa, transparent: true, opacity: 0.6 })));
+}
+
+// KITCHEN COUNTER
+const counter = box(4, 1, 1.5, wireMat(0x0066cc, 0.6), -1, 0.5, 0.5);
+scene.add(counter);
+const counterEdge = addEdges(counter, 0x00aaff, 0.9);
+interactives.push({ mesh: counter, name: 'Kitchen Counter', label: 'Kitchen Counter', story: 'The conversation happened here while they were eating pancakes.', camPos: new THREE.Vector3(4, 5, 6), camLook: new THREE.Vector3(-1, 0.5, 0.5), edgeMesh: counterEdge });
+const counterTop = box(4, 0.08, 1.5, wireMat(0x0099ff, 0.4), -1, 1.06, 0.5);
+scene.add(counterTop);
+
+// PANCAKE PLATE
+const plateGeo = new THREE.CylinderGeometry(0.35, 0.32, 0.06, 12);
+const plate = new THREE.Mesh(plateGeo, wireMat(0x00ccff, 0.9));
+plate.position.set(-0.5, 1.1, 0.5); scene.add(plate);
+const plateEdge = addEdges(plate, 0x00eeff, 1.0);
+for (let i = 0; i < 3; i++) {
+  const pancake = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.04, 12), wireMat(0x00bbdd, 0.8));
+  pancake.position.set(-0.5, 1.14 + i * 0.05, 0.5); scene.add(pancake);
+}
+interactives.push({ mesh: plate, name: 'Pancake Plate', label: 'Pancake Plate', story: 'Their breakfast before the birthday events began.', camPos: new THREE.Vector3(2, 4, 4), camLook: new THREE.Vector3(-0.5, 1.1, 0.5), edgeMesh: plateEdge, isScene2: true });
+
+// WINDOW (back wall)
+const windowFrame = box(2.2, 2.0, 0.12, wireMat(0x0066cc, 0.6), -5, 5.5, -8.9);
+scene.add(windowFrame);
+const winEdge = addEdges(windowFrame, 0x00bbff, 0.9);
+const winH = box(0.08, 2.0, 0.15, wireMat(0x00aaff, 0.8), -5, 5.5, -8.85);
+const winV = box(2.2, 0.08, 0.15, wireMat(0x00aaff, 0.8), -5, 5.5, -8.85);
+scene.add(winH); scene.add(winV);
+const sill = box(2.4, 0.1, 0.3, wireMat(0x004488, 0.7), -5, 4.55, -8.75);
+scene.add(sill); addEdges(sill, 0x0077bb, 0.8);
+interactives.push({ mesh: windowFrame, name: 'Window', label: 'Window', story: 'Outside lies the countryside road.', camPos: new THREE.Vector3(2, 8, -2), camLook: new THREE.Vector3(-5, 5.5, -8.9), edgeMesh: winEdge });
+
+// ── FRONT DOOR ── on LEFT WALL (visible upper-left from camera)
+// Frame — depth along Z, placed at x=-10.9 facing into room
+const doorFrameOuter = box(0.18, 3.8, 2.2, wireMat(0x0077cc, 0.9), -10.91, 1.9, -3);
+scene.add(doorFrameOuter);
+const door = box(0.12, 3.4, 1.8, wireMat(0x0055aa, 0.85), -10.83, 1.7, -3);
+scene.add(door);
+const doorEdge = addEdges(door, 0x00ddff, 1.0);
+addEdges(doorFrameOuter, 0x0099ee, 0.9);
+// Door panel details
+const doorPanelTop = box(0.1, 1.2, 1.5, wireMat(0x003a7a, 0.7), -10.79, 2.6, -3);
+scene.add(doorPanelTop); addEdges(doorPanelTop, 0x0088cc, 0.8);
+const doorPanelBot = box(0.1, 1.4, 1.5, wireMat(0x003a7a, 0.7), -10.79, 1.0, -3);
+scene.add(doorPanelBot); addEdges(doorPanelBot, 0x0088cc, 0.8);
+// Door handle (protrudes into room along +X)
+const handle = box(0.22, 0.35, 0.12, wireMat(0x00eeff, 1.0), -10.68, 1.7, -2.2);
+scene.add(handle); addEdges(handle, 0x00ffff, 1.0);
+const handleBar = box(0.3, 0.06, 0.06, wireMat(0x00eeff, 1.0), -10.6, 1.7, -2.2);
+scene.add(handleBar);
+// Frame trim / architrave
+const trimTop = box(0.1, 0.15, 2.4, wireMat(0x0088cc, 0.7), -10.86, 3.72, -3);
+scene.add(trimTop); addEdges(trimTop, 0x00aadd, 0.8);
+// Step outside door
+const step = box(0.55, 0.12, 2.0, wireMat(0x004488, 0.6), -10.58, 0.06, -3);
+scene.add(step); addEdges(step, 0x0077bb, 0.7);
+// Glowing door light effect (small overhead lamp)
+const lampShade = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 0.18, 8), wireMat(0x00eeff, 0.9));
+lampShade.position.set(-10.7, 3.9, -3); scene.add(lampShade);
+addEdges(lampShade, 0x00ffff, 1.0);
+
+interactives.push({
+  mesh: door, name: 'Front Door', label: 'Front Door',
+  story: 'The man will leave through this door later.',
+  camPos: new THREE.Vector3(-4, 5, 0), camLook: new THREE.Vector3(-11, 1.9, -3),
+  edgeMesh: doorEdge, isScene3: true,
+});
+
+// SOFA
+const sofaBase = box(3.5, 0.5, 1.4, wireMat(0x004477, 0.7), 5, 0.3, 3);
+scene.add(sofaBase);
+const sofaEdge = addEdges(sofaBase, 0x0077bb, 0.8);
+const sofaBack = box(3.5, 0.8, 0.2, wireMat(0x004477, 0.7), 5, 0.85, 2.4);
+scene.add(sofaBack); addEdges(sofaBack, 0x0077bb, 0.7);
+for (let s of [-1.75, 1.75]) { const arm = box(0.2, 0.6, 1.4, wireMat(0x003366, 0.7), 5 + s, 0.55, 3); scene.add(arm); }
+interactives.push({ mesh: sofaBase, name: 'Sofa', label: 'Sofa', story: 'The worn sofa holds quiet evenings and unspoken thoughts.', camPos: new THREE.Vector3(10, 6, 7), camLook: new THREE.Vector3(5, 0.5, 3), edgeMesh: sofaEdge });
+
+// SHELVES
+const shelfUnit = box(1.8, 3, 0.4, wireMat(0x003a5c, 0.6), 7, 1.5, -4);
+scene.add(shelfUnit);
+const shelfEdge = addEdges(shelfUnit, 0x0088cc, 0.8);
+for (let i = 0; i < 3; i++) { const shelf = box(1.8, 0.07, 0.4, wireMat(0x0055aa, 0.7), 7, 0.5 + i, -4); scene.add(shelf); }
+for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) { const book = box(0.2, 0.5, 0.3, wireMat(0x002266, 0.6), 6.4 + j * 0.35, 0.8 + i, -4.1); scene.add(book); }
+interactives.push({ mesh: shelfUnit, name: 'Shelves', label: 'Shelves', story: 'Old books and small keepsakes. A life assembled shelf by shelf.', camPos: new THREE.Vector3(10, 5, -1), camLook: new THREE.Vector3(7, 1.5, -4), edgeMesh: shelfEdge });
+
+// LAUNDRY MACHINES
+const washer = box(1.1, 1.1, 1.1, wireMat(0x003355, 0.7), -7.5, 0.55, -4.5);
+scene.add(washer);
+const washerEdge = addEdges(washer, 0x0077aa, 0.9);
+const washerDoor = new THREE.Mesh(new THREE.CircleGeometry(0.35, 12), wireMat(0x0099cc, 0.5));
+washerDoor.position.set(-6.95, 0.55, -4.5); washerDoor.rotation.y = Math.PI / 2; scene.add(washerDoor);
+const dryer = box(1.1, 1.1, 1.1, wireMat(0x003355, 0.7), -6.2, 0.55, -4.5);
+scene.add(dryer); addEdges(dryer, 0x0077aa, 0.8);
+interactives.push({ mesh: washer, name: 'Laundry Machines', label: 'Laundry Machines', story: 'The rhythm of daily life. Clothes turning, time passing.', camPos: new THREE.Vector3(-3, 5, -1), camLook: new THREE.Vector3(-7, 0.55, -4.5), edgeMesh: washerEdge });
+
+// TABLE
+const tableTop = box(2, 0.08, 1.2, wireMat(0x0044aa, 0.8), 3, 1, -3);
+scene.add(tableTop);
+const tableEdge = addEdges(tableTop, 0x0088ee, 0.9);
+for (let dx of [-0.9, 0.9]) for (let dz of [-0.5, 0.5]) { const leg = box(0.1, 1, 0.1, wireMat(0x003388, 0.7), 3 + dx, 0.5, -3 + dz); scene.add(leg); }
+for (let i = 0; i < 3; i++) { const bottle = box(0.12, 0.6, 0.12, wireMat(0x0066cc, 0.7), 2.6 + i * 0.3, 1.35, -3); scene.add(bottle); }
+interactives.push({ mesh: tableTop, name: 'Table', label: 'Table', story: 'A small table at the center of the room. Meals, conversations, and silence.', camPos: new THREE.Vector3(7, 6, 0), camLook: new THREE.Vector3(3, 1, -3), edgeMesh: tableEdge });
+
+// CHARACTERS
+function buildHuman(color, x, y, z) {
+  const g = new THREE.Group();
+  g.position.set(x, y, z);
+  const mat = wireMat(color, 1.0);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), mat.clone());
+  head.position.set(0, 1.85, 0); g.add(head);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.18, 6), mat.clone());
+  neck.position.set(0, 1.62, 0); g.add(neck);
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.7, 0.3), mat.clone());
+  torso.position.set(0, 1.18, 0); g.add(torso);
+  const hips = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.3, 0.28), mat.clone());
+  hips.position.set(0, 0.78, 0); g.add(hips);
+  for (let s of [-1, 1]) {
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.55, 6), mat.clone());
+    upper.position.set(s * 0.14, 0.47, 0); g.add(upper);
+    const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.5, 6), mat.clone());
+    lower.position.set(s * 0.14, 0.12, 0); g.add(lower);
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.22), mat.clone());
+    foot.position.set(s * 0.14, -0.15, 0.05); g.add(foot);
+  }
+  for (let s of [-1, 1]) {
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.07, 0.5, 6), mat.clone());
+    upper.position.set(s * 0.38, 1.15, 0); upper.rotation.z = s * 0.25; g.add(upper);
+    const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.06, 0.45, 6), mat.clone());
+    lower.position.set(s * 0.5, 0.82, 0); lower.rotation.z = s * 0.3; g.add(lower);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6), mat.clone());
+    hand.position.set(s * 0.6, 0.62, 0); g.add(hand);
+  }
+  const meshes = [];
+  g.traverse(c => { if (c.isMesh) meshes.push(c); });
+  return { group: g, meshes, mat };
+}
+const maleData = buildHuman(0xff4422, -2.2, 0, 0.5);
+scene.add(maleData.group); maleData.group.rotation.y = Math.PI * 0.15;
+const femaleData = buildHuman(0x00ffdd, 0.4, 0, 0.5);
+scene.add(femaleData.group); femaleData.group.rotation.y = -Math.PI * 0.15;
+interactives.push({ mesh: null, name: 'Male', label: 'He', story: null, isCharacter: true, charGender: 'male', camPos: new THREE.Vector3(4, 5, 5), camLook: new THREE.Vector3(-1, 1, 0.5), meshes: maleData.meshes });
+interactives.push({ mesh: null, name: 'Female', label: 'She', story: null, isCharacter: true, charGender: 'female', camPos: new THREE.Vector3(4, 5, 5), camLook: new THREE.Vector3(0, 1, 0.5), meshes: femaleData.meshes });
+
+// PARTICLES
+const particleGeo = new THREE.BufferGeometry();
+const particleCount = 300;
+const ppos = new Float32Array(particleCount * 3);
+for (let i = 0; i < particleCount; i++) {
+  ppos[i*3] = (Math.random() - 0.5) * 24;
+  ppos[i*3+1] = Math.random() * 12;
+  ppos[i*3+2] = (Math.random() - 0.5) * 20;
+}
+particleGeo.setAttribute('position', new THREE.BufferAttribute(ppos, 3));
+const particles = new THREE.Points(particleGeo, new THREE.PointsMaterial({ color: 0x003366, size: 0.05, transparent: true, opacity: 0.6 }));
+scene.add(particles);
+
+// DIALOGUE DATA
+const DIALOGUE = [
+  { speaker: 'female', text: 'I need to tell you something.' },
+  { speaker: 'female', text: 'Yesterday I damaged the car.' },
+  { speaker: 'male',   text: 'What happened?' },
+  { speaker: 'female', text: 'A child suddenly ran into the parking area.' },
+  { speaker: 'female', text: 'I turned the wheel to avoid hitting them.' },
+  { speaker: 'female', text: 'The car hit a concrete post.' },
+  { speaker: 'female', text: 'The bumper and one headlight were damaged.' },
+  { speaker: 'female', text: 'I was afraid to tell you.' },
+  { speaker: 'male',   text: 'You protected a child.' },
+  { speaker: 'male',   text: 'That was the correct decision.' },
+  { speaker: 'male',   text: 'A car can be repaired.' },
+  { speaker: 'male',   text: 'A life cannot.' },
+  { speaker: 'female', text: 'I thought you would be angry.' },
+  { speaker: 'male',   text: "I'm just glad nobody got hurt." },
+  { speaker: 'female', text: 'Thank you for understanding.' },
+];
+const NARRATION_SCENE2 = [
+  "The next day was his wife's birthday.",
+  "Only six hours remained until midnight.",
+  "She secretly wanted to test him.",
+  "She wondered whether he remembered.",
+  "Without saying anything, she waited.",
+];
+const NARRATION_SCENE3 = [
+  "He remembered.",
+  "He had already ordered a birthday cake.",
+  "The cake was waiting in town.",
+  "Their home was far away in the countryside.",
+  "He had no transport.",
+  "He walked toward the main road hoping to find a ride.",
+];
+
+// RAYCASTER
+const raycaster = new THREE.Raycaster();
+function getInteractiveFromMesh(mesh) {
+  for (const obj of interactives) {
+    if (obj.mesh === mesh) return obj;
+    if (obj.meshes && obj.meshes.includes(mesh)) return obj;
+  }
+  return null;
+}
+function getAllMeshes() {
+  const out = [];
+  for (const obj of interactives) {
+    if (obj.mesh) out.push(obj.mesh);
+    if (obj.meshes) out.push(...obj.meshes);
+  }
+  return out;
+}
+
+// TOOLTIP
+const tooltip = document.getElementById('tooltip');
+function showTooltip(name, x, y) { tooltip.textContent = name; tooltip.style.left = (x + 14) + 'px'; tooltip.style.top = (y - 10) + 'px'; tooltip.style.opacity = '1'; }
+function hideTooltip() { tooltip.style.opacity = '0'; }
+
+// INFO PANEL
+const infoPanel = document.getElementById('info-panel');
+const panelTitle = document.getElementById('panel-title');
+const panelText = document.getElementById('panel-text');
+document.getElementById('close-panel').addEventListener('click', closePanel);
+function showPanel(title, text) { panelTitle.textContent = title; panelText.textContent = text; infoPanel.style.display = 'block'; }
+function closePanel() { infoPanel.style.display = 'none'; resetCamera(); state.focusedObj = null; }
+
+// CAMERA
+function focusCamera(pos, look) { camTarget.pos.copy(pos); camTarget.look.copy(look); }
+function resetCamera() { camTarget.pos.copy(camTarget.posDefault); camTarget.look.copy(camTarget.lookDefault); }
+
+// HIGHLIGHT
+function highlightObj(obj, on) {
+  if (!obj) return;
+  if (obj.meshes) {
+    obj.meshes.forEach(m => { if (m.material) m.material.color.setHex(on ? (obj.charGender === 'male' ? 0xff9977 : 0x66ffff) : (obj.charGender === 'male' ? 0xff4422 : 0x00ffdd)); });
+  } else if (obj.edgeMesh) {
+    obj.edgeMesh.material.color.setHex(on ? 0xffffff : 0x00aaff);
+    obj.edgeMesh.material.opacity = on ? 1.0 : 0.9;
+  }
+}
+
+// DIALOGUE SYSTEM
+const dialogueOverlay = document.getElementById('dialogue-overlay');
+const speakerName = document.getElementById('speaker-name');
+const dialogueTextEl = document.getElementById('dialogue-text');
+let typewriterTimer = null, currentFullText = '', typewriterDone = false;
+
+function startDialogue() {
+  state.dialogueActive = true; state.interactionLocked = true; state.dialogueIndex = 0;
+  dialogueOverlay.style.display = 'block'; infoPanel.style.display = 'none'; hideTooltip();
+  focusCamera(new THREE.Vector3(5, 6, 7), new THREE.Vector3(-1, 1, 0.5));
+  showDialogueLine(0);
+}
+function showDialogueLine(idx) {
+  if (idx >= DIALOGUE.length) { endDialogue(); return; }
+  const line = DIALOGUE[idx];
+  const isMale = line.speaker === 'male';
+  speakerName.textContent = isMale ? 'HIM' : 'HER';
+  speakerName.style.color = isMale ? '#ff7755' : '#00eeff';
+  clearInterval(typewriterTimer); dialogueTextEl.textContent = '';
+  currentFullText = line.text; typewriterDone = false; let i = 0;
+  typewriterTimer = setInterval(() => { i++; dialogueTextEl.textContent = currentFullText.slice(0, i); if (i >= currentFullText.length) { clearInterval(typewriterTimer); typewriterDone = true; } }, 30);
+  if (isMale) focusCamera(new THREE.Vector3(3, 5.5, 6), new THREE.Vector3(-2, 1.2, 0.5));
+  else focusCamera(new THREE.Vector3(5, 5.5, 6), new THREE.Vector3(0.4, 1.2, 0.5));
+}
+function advanceDialogue() {
+  if (!state.dialogueActive) return;
+  if (!typewriterDone) { clearInterval(typewriterTimer); dialogueTextEl.textContent = currentFullText; typewriterDone = true; return; }
+  state.dialogueIndex++;
+  if (state.dialogueIndex >= DIALOGUE.length) { endDialogue(); return; }
+  showDialogueLine(state.dialogueIndex);
+}
+function endDialogue() {
+  state.dialogueActive = false; state.interactionLocked = false;
+  dialogueOverlay.style.display = 'none'; state.scene1Done = true; saveState(); updateProgress(); resetCamera();
+}
+dialogueOverlay.addEventListener('click', advanceDialogue);
+dialogueOverlay.addEventListener('touchend', e => { e.preventDefault(); advanceDialogue(); }, { passive: false });
+
+// NARRATION SYSTEM
+const narrationOverlay = document.getElementById('narration-overlay');
+const narrationTextEl = document.getElementById('narration-text');
+const narrationHintEl = document.getElementById('narration-hint');
+let narTypeTimer = null, narFullText = '', narTypeDone = false;
+
+function startNarration(lines, onDone) {
+  state.narrationActive = true; state.interactionLocked = true;
+  state.narrationLines = lines; state.narrationIdx = 0; state._narrationDone = onDone;
+  narrationOverlay.classList.add('active'); infoPanel.style.display = 'none';
+  showNarrationLine(0);
+}
+function showNarrationLine(idx) {
+  if (idx >= state.narrationLines.length) { endNarration(); return; }
+  narrationTextEl.classList.remove('visible'); narrationHintEl.classList.remove('visible');
+  setTimeout(() => {
+    narFullText = state.narrationLines[idx]; narrationTextEl.textContent = ''; narTypeDone = false;
+    narrationTextEl.classList.add('visible'); clearInterval(narTypeTimer); let i = 0;
+    narTypeTimer = setInterval(() => { i++; narrationTextEl.textContent = narFullText.slice(0, i); if (i >= narFullText.length) { clearInterval(narTypeTimer); narTypeDone = true; setTimeout(() => narrationHintEl.classList.add('visible'), 300); } }, 40);
+  }, 300);
+}
+function advanceNarration() {
+  if (!state.narrationActive) return;
+  if (!narTypeDone) { clearInterval(narTypeTimer); narrationTextEl.textContent = narFullText; narTypeDone = true; setTimeout(() => narrationHintEl.classList.add('visible'), 200); return; }
+  state.narrationIdx++; narrationHintEl.classList.remove('visible');
+  showNarrationLine(state.narrationIdx);
+}
+function endNarration() {
+  state.narrationActive = false; state.interactionLocked = false;
+  narrationOverlay.classList.remove('active'); narrationTextEl.classList.remove('visible'); narrationHintEl.classList.remove('visible');
+  resetCamera(); if (state._narrationDone) state._narrationDone();
+}
+narrationOverlay.addEventListener('click', advanceNarration);
+narrationOverlay.addEventListener('touchend', e => { e.preventDefault(); advanceNarration(); }, { passive: false });
+
+// INTERACTION
+function handleClick(nx, ny) {
+  if (state.dialogueActive || state.narrationActive || state.interactionLocked) return;
+  raycaster.setFromCamera(new THREE.Vector2(nx, ny), camera);
+  const hits = raycaster.intersectObjects(getAllMeshes(), false);
+  if (!hits.length) { if (infoPanel.style.display !== 'none') { closePanel(); return; } return; }
+  const obj = getInteractiveFromMesh(hits[0].object);
+  if (!obj) return;
+  if (obj.isCharacter) { startDialogue(); return; }
+  if (obj.isScene2 && state.scene1Done && !state.scene2Done) {
+    focusCamera(obj.camPos, obj.camLook);
+    setTimeout(() => { startNarration(NARRATION_SCENE2, () => { state.scene2Done = true; saveState(); updateProgress(); showPanel(obj.label, obj.story); }); }, 600);
+    return;
+  }
+  if (obj.isScene3 && state.scene1Done && !state.scene3Done) {
+    focusCamera(obj.camPos, obj.camLook);
+    setTimeout(() => { startNarration(NARRATION_SCENE3, () => { state.scene3Done = true; saveState(); updateProgress(); showPanel(obj.label, obj.story); }); }, 600);
+    return;
+  }
+  state.focusedObj = obj;
+  focusCamera(obj.camPos, obj.camLook);
+  setTimeout(() => showPanel(obj.label, obj.story), 500);
+}
+
+function normalizeCoords(clientX, clientY) {
+  return { nx: (clientX / window.innerWidth) * 2 - 1, ny: -(clientY / window.innerHeight) * 2 + 1 };
+}
+canvas.addEventListener('mousemove', e => {
+  if (state.interactionLocked) { hideTooltip(); return; }
+  const { nx, ny } = normalizeCoords(e.clientX, e.clientY);
+  raycaster.setFromCamera(new THREE.Vector2(nx, ny), camera);
+  const hits = raycaster.intersectObjects(getAllMeshes(), false);
+  if (hits.length) {
+    const obj = getInteractiveFromMesh(hits[0].object);
+    if (obj) {
+      if (state.hoveredObj !== obj) { if (state.hoveredObj) highlightObj(state.hoveredObj, false); state.hoveredObj = obj; highlightObj(obj, true); }
+      showTooltip(obj.label, e.clientX, e.clientY); canvas.style.cursor = 'pointer'; return;
+    }
+  }
+  if (state.hoveredObj) { highlightObj(state.hoveredObj, false); state.hoveredObj = null; }
+  hideTooltip(); canvas.style.cursor = 'default';
+});
+canvas.addEventListener('click', e => { const { nx, ny } = normalizeCoords(e.clientX, e.clientY); handleClick(nx, ny); });
+canvas.addEventListener('touchstart', e => {
+  if (state.interactionLocked) return;
+  const t = e.touches[0]; const { nx, ny } = normalizeCoords(t.clientX, t.clientY);
+  raycaster.setFromCamera(new THREE.Vector2(nx, ny), camera);
+  const hits = raycaster.intersectObjects(getAllMeshes(), false);
+  if (hits.length) { const obj = getInteractiveFromMesh(hits[0].object); if (obj) showTooltip(obj.label, t.clientX, t.clientY); }
+}, { passive: true });
+canvas.addEventListener('touchend', e => {
+  if (state.interactionLocked) return;
+  e.preventDefault(); const t = e.changedTouches[0];
+  const { nx, ny } = normalizeCoords(t.clientX, t.clientY);
+  handleClick(nx, ny); hideTooltip();
+}, { passive: false });
+
+// PROGRESS
+function updateProgress() {
+  document.getElementById('dot0').classList.toggle('done', state.scene1Done);
+  document.getElementById('dot1').classList.toggle('done', state.scene2Done);
+  document.getElementById('dot2').classList.toggle('done', state.scene3Done);
+}
+updateProgress();
+
+// ANIMATION
+const lerpSpeed = 0.04;
+const tmpVec = new THREE.Vector3();
+let t = 0;
+function animateCharacters() {
+  t += 0.02;
+  maleData.group.position.y = Math.sin(t * 0.8) * 0.025;
+  femaleData.group.position.y = Math.sin(t * 0.9 + 1.2) * 0.02;
+  maleData.group.rotation.y = Math.PI * 0.15 + Math.sin(t * 0.3) * 0.03;
+  femaleData.group.rotation.y = -Math.PI * 0.15 + Math.sin(t * 0.35 + 0.5) * 0.03;
+}
+function animateParticles() {
+  const pos = particles.geometry.attributes.position;
+  for (let i = 0; i < particleCount; i++) { pos.array[i*3+1] += 0.002; if (pos.array[i*3+1] > 12) pos.array[i*3+1] = 0; }
+  pos.needsUpdate = true;
+}
+function animate() {
+  requestAnimationFrame(animate);
+  animateCharacters(); animateParticles();
+  camera.position.lerp(camTarget.pos, lerpSpeed);
+  tmpVec.lerp(camTarget.look, lerpSpeed * 1.5);
+  camera.lookAt(tmpVec);
+  renderer.render(scene, camera);
+}
+tmpVec.copy(camTarget.look);
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+document.getElementById('intro-btn').addEventListener('click', () => {
+  const intro = document.getElementById('intro');
+  intro.style.opacity = '0';
+  setTimeout(() => intro.style.display = 'none', 1000);
+});
+</script>
+</body>
+</html>

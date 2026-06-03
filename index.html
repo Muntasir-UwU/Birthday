@@ -350,7 +350,20 @@
   .bar-top    { top: 0; }
   .bar-bottom { bottom: 0; }
   .cinematic-bar.open { height: clamp(28px, 5vh, 56px); }
-
+  .interactive-screen {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 20px;
+    transition: opacity 0.5s ease;
+  }
 </style>
 </head>
 <body>
@@ -410,7 +423,9 @@
   </h1>
   <div class="welcome-divider" id="wc-divider"></div>
   <p class="welcome-sub" id="wc-sub">Tanisha To The Case</p>
+  <button class="interactive-screen" id="gate-button"></button>
 </div>
+
 
 <script>
 /* ─────────────────────────────────────────────
@@ -630,6 +645,20 @@ async function runWelcome() {
   await runHeadphone();
   await runWelcome();
 })();
+  const button = document.getElementById('gate-button');
+
+    function advanceToNextAct() {
+      // Fade out the content visually
+      button.style.opacity = '0';
+      
+      // Redirect cleanly after the quick transition fade finishes
+      setTimeout(() => {
+        window.location.href = 'https://muntasir-uwu.github.io/Birthday/inki.html';
+      }, 500);
+    }
+
+    // Capture standard clicks and mobile screen taps
+    button.addEventListener('click', advanceToNextAct);
 </script>
 </body>
 </html>

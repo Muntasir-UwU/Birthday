@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Birthday Scene</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #000;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Georgia', serif;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  #scene {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  /* Background */
+  #bg {
+    position: absolute;
+    inset: 0;
+    background-image: url('https://raw.githubusercontent.com/Muntasir-UwU/Birthday/main/kitchen.png');
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    transition: opacity 1.8s ease;
+  }
+  #bg.visible { opacity: 1; }
+
+  /* Dim overlay on bg for readability */
+  #bg-dim {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    pointer-events: none;
+  }
+
+  /* Characters */
+  #characters {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 75%;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: clamp(20px, 6vw, 80px);
+    padding-bottom: 2%;
+    opacity: 0;
+    transition: opacity 2.5s ease 0.5s;
+  }
+  #characters.visible { opacity: 1; }
+
+  .character {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .char-body {
+    position: relative;
+  }
+
+  /* Wife - simple silhouette */
+  .wife-figure {
+    width: clamp(55px, 12vw, 110px);
+    height: clamp(120px, 28vh, 220px);
+  }
+
+  /* Husband - slightly taller */
+  .husband-figure {
+    width: clamp(60px, 13vw, 120px);
+    height: clamp(135px, 31vh, 240px);
+  }
+
+  .char-name {
+    margin-top: 6px;
+    font-size: clamp(10px, 2.2vw, 14px);
+    color: rgba(255,230,200,0.7);
+    letter-spacing: 0.12em;
+    font-style: italic;
+  }
+
+  /* Dialogue box */
+  #dialogue-box {
+    position: absolute;
+    bottom: clamp(12px, 4vh, 40px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(88vw, 520px);
+    background: rgba(10, 5, 0, 0.78);
+    border: 1px solid rgba(255, 200, 130, 0.3);
+    border-radius: 4px;
+    padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    pointer-events: none;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  #dialogue-box.visible { opacity: 1; }
+
+  #speaker-name {
+    font-size: clamp(10px, 2.3vw, 13px);
+    color: rgba(255, 195, 100, 0.9);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  #dialogue-text {
+    font-size: clamp(14px, 3.2vw, 19px);
+    color: rgba(255, 248, 235, 0.97);
+    line-height: 1.5;
+    font-style: italic;
+  }
+
+  #tap-hint {
+    margin-top: 8px;
+    font-size: clamp(9px, 1.9vw, 11px);
+    color: rgba(255,200,130,0.45);
+    text-align: right;
+    letter-spacing: 0.1em;
+    animation: blink 1.6s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 0.15; }
+  }
+
+  /* ── CAKE SCENE ── */
+  #cake-scene {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+    pointer-events: none;
+  }
+  #cake-scene.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  #cake-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Candles row above cake */
+  #candles-row {
+    display: flex;
+    gap: clamp(6px, 2vw, 14px);
+    margin-bottom: -2px;
+    position: relative;
+    z-index: 5;
+  }
+
+  .candle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .flame {
+    width: clamp(8px, 2vw, 12px);
+    height: clamp(14px, 3.5vw, 20px);
+    background: radial-gradient(ellipse at 50% 80%, #fff 0%, #ffe066 30%, #ff9a00 65%, transparent 100%);
+    border-radius: 50% 50% 30% 30%;
+    animation: flicker 0.15s ease-in-out infinite alternate;
+    transform-origin: bottom center;
+    position: relative;
+  }
+
+  .flame::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3px;
+    height: 4px;
+    background: rgba(255,150,0,0.5);
+    border-radius: 50%;
+    filter: blur(2px);
+  }
+
+  .flame.out {
+    display: none;
+  }
+
+  .smoke {
+    width: 4px;
+    height: 0;
+    background: transparent;
+    border-radius: 50%;
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+  }
+  .smoke.puff {
+    animation: smokePuff 2s ease-out forwards;
+  }
+
+  @keyframes flicker {
+    0%   { transform: scaleX(1)   scaleY(1)    rotate(-1deg); }
+    100% { transform: scaleX(0.9) scaleY(1.08) rotate(1.5deg); }
+  }
+
+  @keyframes smokePuff {
+    0%   { height: 0; opacity: 0.6; transform: translateX(-50%) translateY(0) scaleX(1); }
+    40%  { height: 18px; opacity: 0.4; transform: translateX(-50%) translateY(-14px) scaleX(1.4); }
+    100% { height: 28px; opacity: 0; transform: translateX(-50%) translateY(-28px) scaleX(2.2); }
+  }
+
+  .candle-stick {
+    width: clamp(7px, 1.8vw, 11px);
+    height: clamp(18px, 4.5vw, 28px);
+    border-radius: 2px;
+    background: linear-gradient(to bottom, #fff 0%, #ffe8e8 30%, #ff6b6b 60%, #cc2222 100%);
+    box-shadow: inset -2px 0 3px rgba(0,0,0,0.2);
+  }
+
+  /* 3-tier cake */
+  #cake-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .tier {
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Tier 3 - top (smallest) */
+  .tier-3 {
+    width: clamp(80px, 20vw, 150px);
+    height: clamp(42px, 10vw, 72px);
+    background: linear-gradient(160deg, #8b1a1a 0%, #c0392b 40%, #e74c3c 70%, #c0392b 100%);
+    border: 2px solid rgba(255,255,255,0.15);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  .tier-3::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 10px;
+    background: #fff1f1;
+    border-radius: 6px 6px 0 0;
+    opacity: 0.55;
+  }
+
+  /* Tier 2 - middle */
+  .tier-2 {
+    width: clamp(110px, 27vw, 200px);
+    height: clamp(48px, 11.5vw, 82px);
+    background: linear-gradient(160deg, #7b1414 0%, #b03030 40%, #d9534f 70%, #b03030 100%);
+    border: 2px solid rgba(255,255,255,0.12);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.18);
+    margin-top: -1px;
+  }
+  .tier-2::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 10px;
+    background: #fff0f0;
+    opacity: 0.5;
+  }
+
+  /* Tier 1 - base (largest) */
+  .tier-1 {
+    width: clamp(140px, 34vw, 250px);
+    height: clamp(54px, 13vw, 94px);
+    background: linear-gradient(160deg, #6a0f0f 0%, #9e2424 40%, #c0392b 70%, #9e2424 100%);
+    border: 2px solid rgba(255,255,255,0.1);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.15);
+    margin-top: -1px;
+  }
+  .tier-1::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 10px;
+    background: #ffeaea;
+    opacity: 0.45;
+  }
+
+  /* Frosting drips on each tier */
+  .tier::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 16px;
+    background: radial-gradient(ellipse 14px 12px at 14% 0%, rgba(255,255,255,0.55) 0%, transparent 100%),
+                radial-gradient(ellipse 12px 10px at 38% 0%, rgba(255,255,255,0.45) 0%, transparent 100%),
+                radial-gradient(ellipse 10px 9px at 62% 0%, rgba(255,255,255,0.4) 0%, transparent 100%),
+                radial-gradient(ellipse 13px 11px at 85% 0%, rgba(255,255,255,0.5) 0%, transparent 100%);
+  }
+
+  /* Cake plate */
+  #cake-plate {
+    width: clamp(155px, 38vw, 275px);
+    height: clamp(10px, 2.5vw, 18px);
+    background: linear-gradient(to bottom, #e8d5c4, #c4a882);
+    border-radius: 50%;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    margin-top: 2px;
+  }
+
+  /* Blow instruction */
+  #blow-instruction {
+    margin-top: clamp(16px, 4vh, 28px);
+    text-align: center;
+    padding: 10px 18px;
+    background: rgba(10,5,0,0.7);
+    border: 1px solid rgba(255,180,80,0.35);
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  #blow-instruction p {
+    font-size: clamp(12px, 2.8vw, 16px);
+    color: rgba(255,235,190,0.9);
+    font-style: italic;
+    letter-spacing: 0.06em;
+  }
+
+  #mic-status {
+    margin-top: 5px;
+    font-size: clamp(9px, 2vw, 11px);
+    color: rgba(255,180,80,0.55);
+    letter-spacing: 0.1em;
+  }
+
+  /* ── END SCREEN ── */
+  #end-screen {
+    position: absolute;
+    inset: 0;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 2s ease;
+  }
+  #end-screen.visible { opacity: 1; }
+
+  #end-text {
+    font-size: clamp(18px, 5vw, 32px);
+    color: rgba(255,235,200,0.9);
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    font-style: italic;
+    opacity: 0;
+    animation: none;
+  }
+  #end-text.fade-in {
+    animation: textFadeIn 2s ease forwards 0.8s;
+  }
+  @keyframes textFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* Global black overlay for fades */
+  #fade-overlay {
+    position: absolute;
+    inset: 0;
+    background: #000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1.5s ease;
+    z-index: 50;
+  }
+  #fade-overlay.dark { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="scene">
+
+  <!-- Background -->
+  <div id="bg">
+    <div id="bg-dim"></div>
+  </div>
+
+  <!-- Characters -->
+  <div id="characters">
+    <div class="character" id="wife-char">
+      <div class="char-body">
+        <svg class="wife-figure" viewBox="0 0 110 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Head -->
+          <ellipse cx="55" cy="28" rx="18" ry="20" fill="#f5c9a0"/>
+          <!-- Hair -->
+          <ellipse cx="55" cy="20" rx="20" ry="14" fill="#3d1f0a"/>
+          <path d="M35 20 Q30 50 32 70" stroke="#3d1f0a" stroke-width="7" stroke-linecap="round"/>
+          <path d="M75 20 Q80 50 78 70" stroke="#3d1f0a" stroke-width="7" stroke-linecap="round"/>
+          <!-- Neck -->
+          <rect x="49" y="46" width="12" height="14" rx="3" fill="#f5c9a0"/>
+          <!-- Dress body -->
+          <path d="M33 60 Q20 80 18 140 Q18 155 55 158 Q92 155 92 140 Q90 80 77 60 Z" fill="#c45c7e"/>
+          <!-- Shoulders/sleeves -->
+          <path d="M33 60 Q18 65 15 90 Q22 95 30 85 Q33 72 40 66 Z" fill="#b84f70"/>
+          <path d="M77 60 Q92 65 95 90 Q88 95 80 85 Q77 72 70 66 Z" fill="#b84f70"/>
+          <!-- Collar -->
+          <path d="M42 60 Q55 70 68 60" stroke="#fff" stroke-width="1.5" fill="none" opacity="0.5"/>
+          <!-- Skirt flare -->
+          <path d="M18 140 Q14 175 20 210 Q55 220 90 210 Q96 175 92 140 Q55 155 18 140 Z" fill="#c45c7e"/>
+          <!-- Waist detail -->
+          <path d="M22 108 Q55 118 88 108" stroke="#fff" stroke-width="1.2" fill="none" opacity="0.3"/>
+          <!-- Hands -->
+          <ellipse cx="14" cy="93" rx="7" ry="5" fill="#f5c9a0"/>
+          <ellipse cx="96" cy="93" rx="7" ry="5" fill="#f5c9a0"/>
+          <!-- Face: eyes -->
+          <ellipse cx="49" cy="27" rx="3" ry="3.5" fill="#2d1a0a"/>
+          <ellipse cx="61" cy="27" rx="3" ry="3.5" fill="#2d1a0a"/>
+          <!-- Face: smile -->
+          <path d="M48 36 Q55 42 62 36" stroke="#c47a5a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="char-name">Wife</div>
+    </div>
+
+    <div class="character" id="husband-char">
+      <div class="char-body">
+        <svg class="husband-figure" viewBox="0 0 120 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Head -->
+          <ellipse cx="60" cy="28" rx="19" ry="21" fill="#e8b88a"/>
+          <!-- Hair short -->
+          <ellipse cx="60" cy="17" rx="20" ry="12" fill="#2a1505"/>
+          <!-- Neck -->
+          <rect x="53" y="47" width="14" height="15" rx="3" fill="#e8b88a"/>
+          <!-- Shirt/torso -->
+          <path d="M30 62 Q18 82 16 150 Q16 162 60 164 Q104 162 104 150 Q102 82 90 62 Z" fill="#2c3e6b"/>
+          <!-- Jacket lapels -->
+          <path d="M30 62 L45 90 L60 72 L75 90 L90 62 Z" fill="#253357"/>
+          <!-- Shirt collar & tie -->
+          <path d="M48 62 L60 72 L72 62" stroke="#fff" stroke-width="2" fill="none"/>
+          <path d="M60 72 L57 100 L60 105 L63 100 Z" fill="#8b1a1a"/>
+          <!-- Shoulders -->
+          <path d="M30 62 Q14 68 12 96 Q20 102 28 92 Q30 74 40 68 Z" fill="#253357"/>
+          <path d="M90 62 Q106 68 108 96 Q100 102 92 92 Q90 74 80 68 Z" fill="#253357"/>
+          <!-- Trousers -->
+          <path d="M16 150 Q12 185 16 230 Q38 238 58 230 L60 164 Z" fill="#1a2640"/>
+          <path d="M104 150 Q108 185 104 230 Q82 238 62 230 L60 164 Z" fill="#1a2640"/>
+          <!-- Hands -->
+          <ellipse cx="11" cy="98" rx="7" ry="6" fill="#e8b88a"/>
+          <ellipse cx="109" cy="98" rx="7" ry="6" fill="#e8b88a"/>
+          <!-- Face: eyes -->
+          <ellipse cx="53" cy="27" rx="3" ry="3.5" fill="#2d1a0a"/>
+          <ellipse cx="67" cy="27" rx="3" ry="3.5" fill="#2d1a0a"/>
+          <!-- Face: small smile -->
+          <path d="M52 37 Q60 43 68 37" stroke="#b87a5a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="char-name">Husband</div>
+    </div>
+  </div>
+
+  <!-- Dialogue box -->
+  <div id="dialogue-box">
+    <div id="speaker-name"></div>
+    <div id="dialogue-text"></div>
+    <div id="tap-hint">tap to continue ▸</div>
+  </div>
+
+  <!-- Cake scene -->
+  <div id="cake-scene">
+    <div id="cake-wrapper">
+      <div id="candles-row"></div>
+      <div id="cake-body">
+        <div class="tier tier-3"></div>
+        <div class="tier tier-2"></div>
+        <div class="tier tier-1"></div>
+      </div>
+      <div id="cake-plate"></div>
+    </div>
+    <div id="blow-instruction">
+      <p>Blow into your microphone to extinguish the candles.</p>
+      <div id="mic-status">Waiting for microphone…</div>
+    </div>
+  </div>
+
+  <!-- End screen -->
+  <div id="end-screen">
+    <div id="end-text">End of Chapter</div>
+  </div>
+
+  <!-- Fade overlay -->
+  <div id="fade-overlay" id="fade-overlay"></div>
+
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  const dialogue = [
+    { speaker: 'Wife',    text: 'You made it.' },
+    { speaker: 'Husband', text: 'I told you I would.' },
+    { speaker: 'Wife',    text: 'I wasn\'t sure.' },
+    { speaker: 'Husband', text: 'Happy Birthday.' },
+    { speaker: 'Wife',    text: 'You remembered.' },
+    { speaker: 'Husband', text: 'Of course.' },
+  ];
+
+  let dialogueIndex = 0;
+  let phase = 'intro'; // intro | dialogue | cake | audio | end
+
+  const bg         = document.getElementById('bg');
+  const chars      = document.getElementById('characters');
+  const dlgBox     = document.getElementById('dialogue-box');
+  const speakerEl  = document.getElementById('speaker-name');
+  const textEl     = document.getElementById('dialogue-text');
+  const tapHint    = document.getElementById('tap-hint');
+  const cakeScene  = document.getElementById('cake-scene');
+  const endScreen  = document.getElementById('end-screen');
+  const endText    = document.getElementById('end-text');
+  const fadeOv     = document.getElementById('fade-overlay');
+  const micStatus  = document.getElementById('mic-status');
+  const candlesRow = document.getElementById('candles-row');
+
+  const CANDLE_COUNT = 7;
+  let candlesLit = CANDLE_COUNT;
+  let micStream = null;
+  let analyser = null;
+  let micInterval = null;
+  let wishingAudio = null;
+
+  // Build candles
+  for (let i = 0; i < CANDLE_COUNT; i++) {
+    const c = document.createElement('div');
+    c.className = 'candle';
+    c.innerHTML = `
+      <div style="position:relative">
+        <div class="flame" id="flame-${i}"></div>
+        <div class="smoke" id="smoke-${i}"></div>
+      </div>
+      <div class="candle-stick"></div>`;
+    candlesRow.appendChild(c);
+  }
+
+  // ── INTRO ──
+  setTimeout(() => {
+    bg.classList.add('visible');
+  }, 300);
+
+  setTimeout(() => {
+    chars.classList.add('visible');
+  }, 800);
+
+  setTimeout(() => {
+    showDialogue();
+  }, 2200);
+
+  function showDialogue() {
+    phase = 'dialogue';
+    const d = dialogue[dialogueIndex];
+    speakerEl.textContent = d.speaker;
+    textEl.textContent    = d.text;
+    dlgBox.classList.add('visible');
+    tapHint.style.display = dialogueIndex < dialogue.length - 1 ? 'block' : 'none';
+  }
+
+  function advance() {
+    if (phase !== 'dialogue') return;
+    dialogueIndex++;
+    if (dialogueIndex < dialogue.length) {
+      dlgBox.classList.remove('visible');
+      setTimeout(showDialogue, 400);
+    } else {
+      dlgBox.classList.remove('visible');
+      setTimeout(showCake, 700);
+    }
+  }
+
+  // Tap / click to advance
+  document.addEventListener('click',     advance);
+  document.addEventListener('touchstart', e => { e.preventDefault(); advance(); }, { passive: false });
+
+  // ── CAKE ──
+  function showCake() {
+    phase = 'cake';
+    cakeScene.classList.add('visible');
+    initMic();
+  }
+
+  // ── MICROPHONE ──
+  function initMic() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      micStatus.textContent = 'Microphone not available.';
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      .then(stream => {
+        micStream = stream;
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const src = ctx.createMediaStreamSource(stream);
+        analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        src.connect(analyser);
+        micStatus.textContent = '🎤 Mic active — blow now!';
+        const buf = new Uint8Array(analyser.frequencyBinCount);
+        micInterval = setInterval(() => {
+          analyser.getByteFrequencyData(buf);
+          let sum = 0;
+          for (let v of buf) sum += v;
+          const avg = sum / buf.length;
+          if (avg > 22 && candlesLit > 0) {
+            blowOutCandles();
+          }
+        }, 80);
+      })
+      .catch(() => {
+        micStatus.textContent = 'Tap the cake to blow out the candles.';
+        // Fallback: tap cake
+        cakeScene.addEventListener('click', () => {
+          if (candlesLit > 0) blowOutCandles();
+        }, { once: true });
+      });
+  }
+
+  function blowOutCandles() {
+    if (candlesLit === 0) return;
+    candlesLit = 0;
+    clearInterval(micInterval);
+    if (micStream) micStream.getTracks().forEach(t => t.stop());
+
+    for (let i = 0; i < CANDLE_COUNT; i++) {
+      const flame = document.getElementById(`flame-${i}`);
+      const smoke = document.getElementById(`smoke-${i}`);
+      flame.classList.add('out');
+      smoke.classList.add('puff');
+    }
+
+    micStatus.textContent = '🕯️';
+    document.getElementById('blow-instruction').querySelector('p').textContent = '✨';
+
+    setTimeout(playWishing, 1200);
+  }
+
+  // ── WISHING AUDIO ──
+  function playWishing() {
+    phase = 'audio';
+    // Disable tap-to-advance during audio
+    document.removeEventListener('click', advance);
+    document.removeEventListener('touchstart', advance);
+
+    wishingAudio = new Audio('https://github.com/Muntasir-UwU/Birthday/raw/main/wishing.m4a');
+    wishingAudio.crossOrigin = 'anonymous';
+    wishingAudio.volume = 1;
+    wishingAudio.play().catch(() => {
+      // autoplay blocked — just go to end after delay
+      setTimeout(endScene, 4000);
+    });
+    wishingAudio.addEventListener('ended', endScene, { once: true });
+  }
+
+  // ── ENDING ──
+  function endScene() {
+    phase = 'end';
+    // Fade to black
+    fadeOv.classList.add('dark');
+    // Fade audio if still playing
+    if (wishingAudio && !wishingAudio.paused) {
+      let vol = wishingAudio.volume;
+      const fadeAudio = setInterval(() => {
+        vol = Math.max(0, vol - 0.04);
+        wishingAudio.volume = vol;
+        if (vol <= 0) { clearInterval(fadeAudio); wishingAudio.pause(); }
+      }, 80);
+    }
+
+    setTimeout(() => {
+      endScreen.classList.add('visible');
+      endText.classList.add('fade-in');
+    }, 1600);
+  }
+
+})();
+</script>
+</body>
+</html>

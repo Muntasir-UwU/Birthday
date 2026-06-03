@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>1941</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #000;
+    font-family: 'IM Fell English', serif;
+    cursor: default;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── SCENES ── */
+  .scene {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1.8s ease;
+  }
+  .scene.active  { opacity: 1; pointer-events: all; }
+  .scene.exit    { opacity: 0; pointer-events: none; }
+
+  /* ══════════════════════════════════════
+     SCENE 1 — TYPEWRITER
+  ══════════════════════════════════════ */
+  #scene1 { background: #000; flex-direction: column; padding: 40px 24px; }
+
+  .story-lines {
+    max-width: 640px; width: 100%;
+    text-align: center;
+    display: flex; flex-direction: column; gap: 32px;
+  }
+
+  .story-line {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(1rem, 3.2vw, 1.45rem);
+    font-weight: 300; font-style: italic;
+    color: #c8b89a;
+    letter-spacing: 0.08em; line-height: 1.7;
+    opacity: 0; min-height: 1.4em;
+    transition: opacity 0.6s ease;
+  }
+  .story-line.line-1 {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(1.4rem, 4.5vw, 2.2rem);
+    font-weight: 600; font-style: normal;
+    color: #d4c4a0; letter-spacing: 0.2em;
+    text-shadow: 0 0 40px rgba(200,160,80,0.35);
+  }
+
+  .cursor-blink {
+    display: inline-block; width: 2px; height: 1em;
+    background: #c8b89a; margin-left: 2px;
+    vertical-align: text-bottom;
+    animation: blink 0.85s step-end infinite;
+  }
+  .line-1 .cursor-blink { background: #d4c4a0; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  .click-hint {
+    position: fixed; bottom: 48px; left: 50%; transform: translateX(-50%);
+    font-family: 'Cinzel', serif;
+    font-size: clamp(0.55rem, 1.8vw, 0.72rem);
+    letter-spacing: 0.35em; color: rgba(200,184,154,0.6);
+    text-transform: uppercase; opacity: 0; white-space: nowrap;
+    animation: pulseHint 2s ease-in-out infinite;
+  }
+  @keyframes pulseHint { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
+
+  /* ══════════════════════════════════════
+     SCENE 2 — HOUSE
+  ══════════════════════════════════════ */
+  #scene2 { background: #000; overflow: hidden; cursor: default; }
+
+  /* House image */
+  .house-bg {
+    position: absolute; inset: 0;
+    background-size: cover;
+    background-position: center 30%;
+    transform-origin: center center;
+    animation: slowZoom 22s ease-out forwards;
+    transition: filter 0.4s ease;
+  }
+  .house-bg.hovered {
+    filter: brightness(1.18) saturate(1.05);
+  }
+  @keyframes slowZoom {
+    from { transform: scale(1); }
+    to   { transform: scale(1.1); }
+  }
+
+  /* Storm gradient overlay */
+  .storm-overlay {
+    position: absolute; inset: 0; z-index: 2;
+    background: linear-gradient(
+      to bottom,
+      rgba(4,6,18,0.45) 0%,
+      rgba(4,6,18,0.05) 45%,
+      rgba(4,6,18,0.15) 70%,
+      rgba(0,0,0,0.82) 100%
+    );
+    pointer-events: none;
+  }
+
+  /* ── FOG ── */
+  .fog-layer {
+    position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden;
+  }
+  .fog-strip {
+    position: absolute; width: 220%; left: -60%;
+    border-radius: 50%; filter: blur(20px);
+  }
+  .fog-strip:nth-child(1) {
+    height: 160px; bottom: 15%;
+    background: radial-gradient(ellipse 60% 100% at 50% 50%, rgba(140,160,185,0.11) 0%, transparent 70%);
+    animation: fogDrift1 30s linear infinite;
+  }
+  .fog-strip:nth-child(2) {
+    height: 100px; bottom: 26%; opacity: 0.65;
+    background: radial-gradient(ellipse 60% 100% at 50% 50%, rgba(140,160,185,0.09) 0%, transparent 70%);
+    animation: fogDrift2 42s linear infinite;
+  }
+  .fog-strip:nth-child(3) {
+    height: 200px; bottom: 3%; opacity: 0.5;
+    background: radial-gradient(ellipse 60% 100% at 50% 50%, rgba(140,160,185,0.08) 0%, transparent 70%);
+    animation: fogDrift1 25s linear infinite reverse;
+  }
+  @keyframes fogDrift1 { from{transform:translateX(0)} to{transform:translateX(28%)} }
+  @keyframes fogDrift2 { from{transform:translateX(0)} to{transform:translateX(-22%)} }
+
+  /* ── LIGHTNING ── */
+  .lightning-flash {
+    position: absolute; inset: 0; z-index: 4; pointer-events: none;
+    background: rgba(180,210,255,0);
+  }
+  .lightning-flash.strike { animation: lightStrike 0.24s ease-out forwards; }
+  @keyframes lightStrike {
+    0%  { background: rgba(180,210,255,0); }
+    15% { background: rgba(180,210,255,0.17); }
+    30% { background: rgba(180,210,255,0); }
+    60% { background: rgba(180,210,255,0.09); }
+    100%{ background: rgba(180,210,255,0); }
+  }
+
+  /* ── WINDOW GLOW (SVG overlay, synced to house polygon) ── */
+  .window-glow {
+    position: absolute; inset: 0; z-index: 4; pointer-events: none;
+    opacity: 0; transition: opacity 0.5s ease;
+  }
+  .window-glow.visible { opacity: 1; }
+
+  /* ── CLIP-PATH HITBOX ── */
+  .house-hitbox {
+    position: absolute; inset: 0; z-index: 6;
+    cursor: default;
+    clip-path: polygon(
+      73.57% 35.61%, 78.52% 35.61%, 79.0%  39.5%,  88.2%  45.5%,   
+      94.0%  47.2%,  96.0%  50.0%,  96.0%  56.0%,  99.0%  57.5%,   
+      99.0%  77.5%,  88.5%  77.5%,  83.0%  77.0%,  79.0%  78.8%,   
+      65.0%  79.2%,  49.5%  78.8%,  39.0%  77.6%,  20.5%  77.2%,   
+      7.5%   75.7%,  1.5%   72.5%,  1.5%   59.0%,  7.5%   57.0%,   
+      19.5%  55.0%,  20.0%  46.0%,  24.0%  43.5%,  27.0%  42.0%,   
+      39.0%  38.2%,  49.5%  35.8%,  56.0%  35.3%,  65.0%  36.0%,   
+      73.0%  37.7%,  73.57% 39.24%, 73.57% 35.61%
+    );
+  }
+
+  .house-hitbox.house-hover { cursor: pointer; }
+
+  /* ── ENTER HINT ── */
+  .enter-hint {
+    position: absolute; bottom: 9%; left: 50%; transform: translateX(-50%);
+    z-index: 7;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(0.72rem, 2vw, 0.98rem);
+    font-style: italic; letter-spacing: 0.22em;
+    color: rgba(255,255,255,0.22);
+    text-align: center; white-space: nowrap;
+    pointer-events: none;
+    animation: breathe 4.5s ease-in-out infinite;
+  }
+  @keyframes breathe { 0%,100%{opacity:0.1} 50%{opacity:0.32} }
+
+  /* ── TOOLTIP ── */
+  .tooltip {
+    position: fixed; z-index: 30;
+    background: rgba(6,6,10,0.90);
+    border: 1px solid rgba(180,158,110,0.22);
+    color: rgba(220,210,188,0.92);
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: clamp(0.78rem, 2vw, 0.9rem);
+    letter-spacing: 0.06em;
+    padding: 10px 18px; border-radius: 6px;
+    box-shadow: 0 10px 36px rgba(0,0,0,0.8), 0 0 0 0.5px rgba(180,158,110,0.12);
+    pointer-events: none; opacity: 0;
+    max-width: 220px; text-align: center;
+    animation: tipFloat 2.1s ease forwards;
+  }
+  @keyframes tipFloat {
+    0%  { opacity: 0; transform: translateY(0); }
+    12% { opacity: 1; transform: translateY(-5px); }
+    72% { opacity: 1; transform: translateY(-12px); }
+    100%{ opacity: 0; transform: translateY(-20px); }
+  }
+
+  /* ══════════════════════════════════════
+     SCENE 3
+  ══════════════════════════════════════ */
+  #scene3 { 
+    background: #000; 
+    flex-direction: column; 
+    cursor: pointer; 
+  }
+  .scene3-content {
+    text-align: center;
+    animation: fadeUp 2.2s ease 0.4s both;
+  }
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(22px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  .scene3-title {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(1.1rem, 4vw, 1.9rem);
+    letter-spacing: 0.3em; color: #8a7050;
+    text-transform: uppercase; margin-bottom: 20px;
+  }
+  .scene3-sub {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: clamp(0.88rem, 2.4vw, 1.15rem);
+    color: rgba(170,150,120,0.55); letter-spacing: 0.12em;
+    margin-bottom: 30px;
+  }
+  .door-icon { font-size: 2.8rem; margin-bottom: 18px; opacity: 0.45; }
+
+  .scene3-hint {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(0.55rem, 1.8vw, 0.72rem);
+    letter-spacing: 0.35em; color: rgba(170,150,120,0.4);
+    text-transform: uppercase;
+    animation: pulseHint 2s ease-in-out infinite;
+  }
+
+  /* ── BLACKOUT ── */
+  #blackout {
+    position: fixed; inset: 0; background: #000; z-index: 100;
+    opacity: 0; pointer-events: none; transition: opacity 1.4s ease;
+  }
+  #blackout.on { opacity: 1; pointer-events: all; }
+
+  /* ── FILM GRAIN ── */
+  .grain {
+    position: fixed; inset: 0; z-index: 50; pointer-events: none;
+    opacity: 0.032;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 180px; mix-blend-mode: overlay;
+    animation: grainShift 0.14s steps(1) infinite;
+  }
+  @keyframes grainShift {
+    0%  { background-position: 0 0; }
+    25% { background-position: -42px -28px; }
+    50% { background-position: 18px 58px; }
+    75% { background-position: -58px 22px; }
+  }
+
+  /* ── VIGNETTE ── */
+  .vignette {
+    position: fixed; inset: 0; z-index: 10; pointer-events: none;
+    background: radial-gradient(ellipse 80% 80% at 50% 50%, transparent 38%, rgba(0,0,0,0.78) 100%);
+  }
+</style>
+</head>
+<body>
+
+<div class="grain"></div>
+<div class="vignette"></div>
+<div id="blackout"></div>
+
+<div class="scene active" id="scene1">
+  <div class="story-lines">
+    <div class="story-line line-1" id="line1"></div>
+    <div class="story-line"       id="line2"></div>
+    <div class="story-line"       id="line3"></div>
+    <div class="story-line"       id="line4"></div>
+  </div>
+  <div class="click-hint" id="clickHint">✦ &nbsp; Click Anywhere To Continue &nbsp; ✦</div>
+</div>
+
+<div class="scene" id="scene2">
+  <div class="house-bg" id="houseBg"></div>
+  <div class="storm-overlay"></div>
+
+  <div class="fog-layer">
+    <div class="fog-strip"></div>
+    <div class="fog-strip"></div>
+    <div class="fog-strip"></div>
+  </div>
+
+  <div class="lightning-flash" id="lightning"></div>
+
+  <svg class="window-glow" id="windowGlow" viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="wg1" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#ffe8a0" stop-opacity="0.55"/>
+        <stop offset="100%" stop-color="#ffe8a0" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="wg2" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#ffe8a0" stop-opacity="0.45"/>
+        <stop offset="100%" stop-color="#ffe8a0" stop-opacity="0"/>
+      </radialGradient>
+      <filter id="wblur"><feGaussianBlur stdDeviation="1.5"/></filter>
+    </defs>
+    <ellipse cx="38" cy="51" rx="7" ry="6" fill="url(#wg1)" filter="url(#wblur)"/>
+    <ellipse cx="57" cy="51" rx="7" ry="6" fill="url(#wg2)" filter="url(#wblur)"/>
+    <ellipse cx="48" cy="62" rx="22" ry="10" fill="#a080ff" fill-opacity="0.04" filter="url(#wblur)"/>
+  </svg>
+
+  <div class="house-hitbox" id="houseHitbox"></div>
+  <div class="enter-hint">Press Anywhere Inside The House</div>
+</div>
+
+<div class="scene" id="scene3">
+  <div class="scene3-content">
+    <div class="door-icon">🚪</div>
+    <div class="scene3-title">The Door Opens</div>
+    <div class="scene3-sub">The story continues within...</div>
+    <div class="scene3-hint">✦ &nbsp; Click Anywhere To Advance &nbsp; ✦</div>
+  </div>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────
+   EXTERNAL HOSTED ASSETS
+───────────────────────────────────────────── */
+// Uses raw media delivery link from your GitHub repository branch
+const HOUSE_IMAGE_URL = "https://raw.githubusercontent.com/Muntasir-UwU/Birthday/main/house.png";
+document.getElementById('houseBg').style.backgroundImage = `url(${HOUSE_IMAGE_URL})`;
+
+/* ─────────────────────────────────────────────
+   SCENE ENGINE & INTERACTIONS
+───────────────────────────────────────────── */
+let scene2Active = false;
+
+// Tracing point array matching percent data inside clip-path layout 
+const POLY_PCT = [
+  [73.57, 35.61], [78.52, 35.61], [79.0, 39.5],  [88.2, 45.5], [94.0, 47.2],  [96.0, 50.0],
+  [96.0, 56.0],  [99.0, 57.5],  [99.0, 77.5],  [88.5, 77.5], [83.0, 77.0],  [79.0, 78.8],
+  [65.0, 79.2],  [49.5, 78.8],  [39.0, 77.6],  [20.5, 77.2], [7.5, 75.7],   [1.5, 72.5],
+  [1.5, 59.0],   [7.5, 57.0],   [19.5, 55.0],  [20.0, 46.0], [24.0, 43.5],  [27.0, 42.0],
+  [39.0, 38.2],  [49.5, 35.8],  [56.0, 35.3],  [65.0, 36.0], [73.0, 37.7],  [73.57, 39.24]
+];
+
+// Audio synthesizers
+const ctx = new (window.AudioContext || window.webkitAudioContext)();
+function playCreak() {
+  const osc = ctx.createOscillator(), gain = ctx.createGain();
+  osc.type = 'sawtooth'; osc.frequency.setValueAtTime(80, ctx.currentTime);
+  osc.frequency.linearRampToValueAtTime(45, ctx.currentTime + 1.2);
+  gain.gain.setValueAtTime(0.06, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.2);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime + 1.2);
+}
+
+// Scene 1: Typewriter logic
+const linesData = [
+  "NOVEMBER, 1941.",
+  "There lived a family in the rural area",
+  "A husband with Obsessive-Compulsive Disorder ",
+  "And his wife having best fashion sense elegant and a beautiful model."
+];
+let currentLine = 0;
+function typeLine() {
+  if (currentLine >= linesData.length) {
+    document.getElementById('clickHint').style.opacity = '1';
+    return;
+  }
+  const id = `line${currentLine + 1}`;
+  const el = document.getElementById(id);
+  el.style.opacity = '1';
+  let txt = linesData[currentLine], idx = 0;
+  el.innerHTML = '<span class="cursor-blink"></span>';
+  
+  function step() {
+    if (idx < txt.length) {
+      el.innerHTML = txt.substring(0, idx+1) + '<span class="cursor-blink"></span>';
+      idx++; setTimeout(step, 45 + Math.random()*40);
+    } else {
+      const cursor = el.querySelector('.cursor-blink');
+      if (cursor && currentLine < linesData.length - 1) cursor.remove();
+      currentLine++; setTimeout(typeLine, 600);
+    }
+  }
+  step();
+}
+window.addEventListener('DOMContentLoaded', () => { setTimeout(typeLine, 800); });
+
+// Progression tracking from Scene 1 to Scene 2
+document.getElementById('scene1').addEventListener('click', () => {
+  if (currentLine >= linesData.length) {
+    document.getElementById('scene1').className = 'scene exit';
+    document.getElementById('scene2').className = 'scene active';
+    startStorm();
+  }
+});
+
+// Scene 2 Environment Loops
+function startStorm() {
+  setInterval(() => {
+    if (Math.random() > 0.40) {
+      const flash = document.getElementById('lightning');
+      flash.classList.add('strike');
+      setTimeout(() => flash.classList.remove('strike'), 300);
+    }
+  }, 5000);
+}
+
+function getPosPct(el, clientX, clientY) {
+  const r = el.getBoundingClientRect();
+  return { px: ((clientX - r.left) / r.width) * 100, py: ((clientY - r.top) / r.height) * 100 };
+}
+
+function pointInPolygon(x, y, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i][0], yi = poly[i][1];
+    const xj = poly[j][0], yj = poly[j][1];
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+
+const s2 = document.getElementById('houseHitbox');
+const houseBg = document.getElementById('houseBg');
+const windowGlow = document.getElementById('windowGlow');
+
+s2.addEventListener('mousemove', (e) => {
+  if (scene2Active) return;
+  const { px, py } = getPosPct(s2, e.clientX, e.clientY);
+  const inside = pointInPolygon(px, py, POLY_PCT);
+  s2.style.cursor = inside ? 'pointer' : 'default';
+  houseBg.classList.toggle('hovered', inside);
+  windowGlow.classList.toggle('visible', inside);
+});
+
+s2.addEventListener('mouseleave', () => {
+  s2.style.cursor = 'default';
+  houseBg.classList.remove('hovered');
+  windowGlow.classList.remove('visible');
+});
+
+s2.addEventListener('click', (e) => {
+  if (scene2Active) return;
+  const { px, py } = getPosPct(s2, e.clientX, e.clientY);
+  if (pointInPolygon(px, py, POLY_PCT)) {
+    playCreak();
+    windowGlow.classList.remove('visible');
+    houseBg.classList.remove('hovered');
+    goScene3();
+  } else {
+    showTip(e.clientX, e.clientY);
+  }
+});
+
+function showTip(x, y) {
+  const t = document.createElement('div');
+  t.className = 'tooltip'; t.style.left = `${x - 60}px`; t.style.top = `${y - 20}px`;
+  t.innerText = Math.random() > 0.5 ? "The door is lock-shut... approach carefully." : "Look closer at the glowing windows.";
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2100);
+}
+
+// ══════════════════════════════════════════
+// SCENE 3 NAVIGATION FUNCTION
+// ══════════════════════════════════════════
+function goScene3() {
+  scene2Active = true; 
+  
+  // 1. Move from Scene 2 into Scene 3 smoothly
+  document.getElementById('scene2').className = 'scene exit';
+  const s3 = document.getElementById('scene3');
+  s3.className = 'scene active';
+
+  // 2. Set up the universal listener on Scene 3 container area
+  s3.addEventListener('click', () => {
+    // Turn on full screen blackout fade transition
+    const blackout = document.getElementById('blackout');
+    if (blackout) blackout.classList.add('on');
+
+    // Route directly to your secondary HTML node link right after the animation complete timeline
+    setTimeout(() => {
+      window.location.href = 'newpage.html';
+    }, 1400);
+  }, { once: true }); // Ensure handler is safely executed only once
+}
+</script>
+</body>
+</html>

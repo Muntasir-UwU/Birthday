@@ -127,7 +127,6 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x00000a, 0.035);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
-// Shifted camera so left wall (door) is visible
 camera.position.set(16, 16, 10);
 camera.lookAt(0, 0, -1);
 
@@ -191,7 +190,8 @@ for (let z = -6; z <= 6; z += 6) {
 // KITCHEN COUNTER
 const counter = box(4, 1, 1.5, wireMat(0x0066cc, 0.6), -1, 0.5, 0.5);
 scene.add(counter);
-const counterEdge = addEdgecounter, 0x00aaff, 0.9);
+// FIX: was addEdgecounter — missing opening parenthesis
+const counterEdge = addEdges(counter, 0x00aaff, 0.9);
 interactives.push({ mesh: counter, name: 'Kitchen Counter', label: 'Kitchen Counter', story: 'The conversation happened here while they were eating pancakes.', camPos: new THREE.Vector3(4, 5, 6), camLook: new THREE.Vector3(-1, 0.5, 0.5), edgeMesh: counterEdge });
 const counterTop = box(4, 0.08, 1.5, wireMat(0x0099ff, 0.4), -1, 1.06, 0.5);
 scene.add(counterTop);
@@ -218,31 +218,25 @@ const sill = box(2.4, 0.1, 0.3, wireMat(0x004488, 0.7), -5, 4.55, -8.75);
 scene.add(sill); addEdges(sill, 0x0077bb, 0.8);
 interactives.push({ mesh: windowFrame, name: 'Window', label: 'Window', story: 'Outside lies the countryside road.', camPos: new THREE.Vector3(2, 8, -2), camLook: new THREE.Vector3(-5, 5.5, -8.9), edgeMesh: winEdge });
 
-// ── FRONT DOOR ── on LEFT WALL (visible upper-left from camera)
-// Frame — depth along Z, placed at x=-10.9 facing into room
+// FRONT DOOR on LEFT WALL
 const doorFrameOuter = box(0.18, 3.8, 2.2, wireMat(0x0077cc, 0.9), -10.91, 1.9, -3);
 scene.add(doorFrameOuter);
 const door = box(0.12, 3.4, 1.8, wireMat(0x0055aa, 0.85), -10.83, 1.7, -3);
 scene.add(door);
 const doorEdge = addEdges(door, 0x00ddff, 1.0);
 addEdges(doorFrameOuter, 0x0099ee, 0.9);
-// Door panel details
 const doorPanelTop = box(0.1, 1.2, 1.5, wireMat(0x003a7a, 0.7), -10.79, 2.6, -3);
 scene.add(doorPanelTop); addEdges(doorPanelTop, 0x0088cc, 0.8);
 const doorPanelBot = box(0.1, 1.4, 1.5, wireMat(0x003a7a, 0.7), -10.79, 1.0, -3);
 scene.add(doorPanelBot); addEdges(doorPanelBot, 0x0088cc, 0.8);
-// Door handle (protrudes into room along +X)
 const handle = box(0.22, 0.35, 0.12, wireMat(0x00eeff, 1.0), -10.68, 1.7, -2.2);
 scene.add(handle); addEdges(handle, 0x00ffff, 1.0);
 const handleBar = box(0.3, 0.06, 0.06, wireMat(0x00eeff, 1.0), -10.6, 1.7, -2.2);
 scene.add(handleBar);
-// Frame trim / architrave
 const trimTop = box(0.1, 0.15, 2.4, wireMat(0x0088cc, 0.7), -10.86, 3.72, -3);
 scene.add(trimTop); addEdges(trimTop, 0x00aadd, 0.8);
-// Step outside door
 const step = box(0.55, 0.12, 2.0, wireMat(0x004488, 0.6), -10.58, 0.06, -3);
 scene.add(step); addEdges(step, 0x0077bb, 0.7);
-// Glowing door light effect (small overhead lamp)
 const lampShade = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 0.18, 8), wireMat(0x00eeff, 0.9));
 lampShade.position.set(-10.7, 3.9, -3); scene.add(lampShade);
 addEdges(lampShade, 0x00ffff, 1.0);
@@ -372,7 +366,7 @@ const NARRATION_SCENE3 = [
   "He had already ordered a birthday cake.",
   "The cake was waiting in town.",
   "Their home was far away in the countryside.",
-  "He had no transport.",
+  "He had no transport cause his wife did bad things to it.",
   "He walked toward the main road hoping to find a ride.",
 ];
 
@@ -497,7 +491,6 @@ narrationOverlay.addEventListener('touchend', e => { e.preventDefault(); advance
 
 // NEXT ROUND
 function goNextRound() {
-  // Fade to black then show "next round" overlay
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:70;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;opacity:0;transition:opacity 1s;font-family:Courier New,monospace;';
   const title = document.createElement('div');
@@ -537,24 +530,23 @@ function handleClick(nx, ny) {
     return;
   }
   if (obj.isScene3) {
-  focusCamera(obj.camPos, obj.camLook);
-  if (state.scene1Done && !state.scene3Done) {
-    setTimeout(() => {
-      startNarration(NARRATION_SCENE3, () => {
-        state.scene3Done = true;
-        saveState();
-        updateProgress();
-        window.location.href = 'https://muntasir-uwu.github.io/Birthday/the-birthday-ride.html';
-      });
-    }, 600);
-  } else {
-    // Already done OR scene 1 not done — redirect immediately every time
-    setTimeout(() => {
-      window.location.href = 'https://raw.githubusercontent.com/Muntasir-UwU/Birthday/main/the-birthday-ride.html';
-    }, 400);
+    focusCamera(obj.camPos, obj.camLook);
+    if (state.scene1Done && !state.scene3Done) {
+      setTimeout(() => {
+        startNarration(NARRATION_SCENE3, () => {
+          state.scene3Done = true;
+          saveState();
+          updateProgress();
+          window.location.href = 'https://muntasir-uwu.github.io/Birthday/index-1.html';
+        });
+      }, 600);
+    } else {
+      setTimeout(() => {
+        window.location.href = 'https://muntasir-uwu.github.io/Birthday/index-1.html';
+      }, 400);
+    }
+    return;
   }
-  return;
-}
   state.focusedObj = obj;
   focusCamera(obj.camPos, obj.camLook);
   setTimeout(() => showPanel(obj.label, obj.story), 500);

@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Road Home — Chapter 2</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;}
+#scene{position:fixed;inset:0;width:100%;height:100%;}
+#bg-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:0;}
+#overlay-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;}
+#click-layer{position:absolute;inset:0;z-index:3;cursor:crosshair;}
+/* Hit zones */
+.hitzone{position:absolute;cursor:pointer;z-index:4;}
+#hz-character{bottom:32%;right:10%;width:10%;height:8%;}
+#hz-highway{bottom:10%;left:35%;width:30%;height:30%;}
+#hz-stars{top:0;left:0;width:100%;height:42%;}
+#hz-moon{top:2%;right:15%;width:8%;height:12%;}
+#hz-mountains{top:38%;left:0;width:100%;height:14%;}
+#hz-horizon{top:48%;left:30%;width:40%;height:6%;}
+#hz-headlights{top:50%;left:25%;width:18%;height:12%;}
+#hz-roadside{bottom:5%;left:0;width:35%;height:25%;}
+#hz-destination{top:46%;left:48%;width:8%;height:8%;}
+/* Tooltip card */
+#tooltip{
+  position:fixed;bottom:calc(22% + 10px);left:50%;transform:translateX(-50%);
+  background:rgba(0,0,30,0.92);border:1px solid rgba(0,150,255,0.4);
+  border-radius:12px;padding:18px 24px;max-width:420px;width:90%;
+  color:#e0f0ff;font-family:'Courier New',monospace;font-size:14px;
+  box-shadow:0 0 30px rgba(0,100,255,0.3);display:none;z-index:10;
+  backdrop-filter:blur(8px);
+}
+#tooltip .tt-label{color:#00ccff;font-size:11px;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;}
+#tooltip .tt-title{color:#fff;font-size:17px;font-weight:bold;margin-bottom:8px;text-shadow:0 0 10px rgba(0,200,255,0.6);}
+#tooltip .tt-desc{color:#aad4ff;line-height:1.6;font-size:13px;}
+#tooltip .tt-close{position:absolute;top:8px;right:14px;color:#556;font-size:18px;cursor:pointer;font-weight:bold;}
+#tooltip .tt-close:hover{color:#fff;}
+/* Highlight ring */
+.highlight-ring{
+  position:absolute;border-radius:50%;border:2px solid rgba(0,200,255,0.7);
+  box-shadow:0 0 20px rgba(0,200,255,0.5),inset 0 0 20px rgba(0,200,255,0.1);
+  pointer-events:none;z-index:5;display:none;
+  animation:pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:0.7;transform:scale(1);}50%{opacity:1;transform:scale(1.05);}}
+/* Dialogue box */
+#dialogue-box{
+  position:fixed;bottom:0;left:0;right:0;height:22%;
+  background:linear-gradient(to top,rgba(0,0,20,0.97),rgba(0,0,30,0.9));
+  border-top:1px solid rgba(0,150,255,0.3);
+  z-index:20;display:none;cursor:pointer;
+  padding:16px 24px 12px;
+}
+#dialogue-box .speaker{
+  color:#00ccff;font-family:'Courier New',monospace;font-size:13px;
+  text-transform:uppercase;letter-spacing:3px;margin-bottom:8px;
+  text-shadow:0 0 10px #00ccff;
+}
+#dialogue-box .text{
+  color:#e8f4ff;font-family:'Georgia',serif;font-size:17px;line-height:1.7;
+  min-height:52px;
+}
+#dialogue-box .continue{
+  position:absolute;bottom:10px;right:22px;color:#556a80;font-size:12px;
+  font-family:'Courier New',monospace;letter-spacing:2px;
+  animation:blink 1.2s step-end infinite;
+}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+/* Chapter transition */
+#chapter-screen{
+  position:fixed;inset:0;background:#000;z-index:100;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity 0.8s;
+  font-family:'Courier New',monospace;
+  cursor:pointer;
+}
+#chapter-screen.visible{opacity:1;pointer-events:all;}
+#chapter-screen .ch-num{color:#334455;font-size:14px;letter-spacing:8px;text-transform:uppercase;margin-bottom:16px;}
+#chapter-screen .ch-title{color:#fff;font-size:36px;font-weight:bold;letter-spacing:4px;text-shadow:0 0 30px rgba(0,150,255,0.5);margin-bottom:24px;}
+#chapter-screen .ch-obj-label{color:#556a80;font-size:11px;letter-spacing:4px;text-transform:uppercase;margin-bottom:8px;}
+#chapter-screen .ch-obj{color:#aad4ff;font-size:16px;letter-spacing:2px;}
+#chapter-screen .ch-continue{margin-top:40px;color:#334;font-size:13px;letter-spacing:3px;animation:blink 1.2s step-end infinite;text-align:center;}
+/* Redirect notice on chapter screen */
+#chapter-screen .ch-redirect{
+  margin-top:16px;color:#00ccff;font-size:12px;letter-spacing:2px;
+  opacity:0.7;text-decoration:underline;text-align:center;
+}
+/* Fullscreen suspense */
+#suspense-screen{
+  position:fixed;inset:0;background:#000;z-index:90;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity 1.2s;
+  font-family:'Georgia',serif;
+}
+#suspense-screen.visible{opacity:1;pointer-events:all;}
+#suspense-screen .q{color:#c0d8f0;font-size:28px;letter-spacing:2px;margin-bottom:28px;}
+#suspense-screen .cont{
+  color:#aad4ff;font-size:16px;letter-spacing:4px;cursor:pointer;
+  border:1px solid rgba(100,200,255,0.3);padding:10px 28px;border-radius:6px;
+  font-family:'Courier New',monospace;
+  background:rgba(0,100,200,0.1);transition:all 0.3s;
+}
+#suspense-screen .cont:hover{background:rgba(0,150,255,0.2);border-color:rgba(0,200,255,0.6);}
+/* Achievements */
+#achievements{
+  position:fixed;top:12px;right:12px;z-index:8;
+  font-family:'Courier New',monospace;font-size:11px;
+}
+.ach-badge{
+  background:rgba(0,0,30,0.8);border:1px solid rgba(0,200,100,0.4);
+  color:#00cc88;border-radius:20px;padding:4px 12px;margin-bottom:5px;
+  text-align:right;opacity:0;transform:translateX(20px);
+  transition:opacity 0.5s,transform 0.5s;display:block;
+}
+.ach-badge.show{opacity:1;transform:translateX(0);}
+/* HUD */
+#hud{position:fixed;top:12px;left:12px;z-index:8;font-family:'Courier New',monospace;}
+.hud-item{color:rgba(0,180,255,0.5);font-size:11px;letter-spacing:2px;margin-bottom:3px;}
+/* Fade overlay */
+#fade{position:fixed;inset:0;background:#000;opacity:0;z-index:80;pointer-events:none;transition:opacity 1s;}
+#fade.fading{opacity:1;}
+/* Neon glow on character zone */
+#hz-character{transition:all 0.3s;}
+</style>
+</head>
+<body>
+<div id="scene">
+  <img id="bg-img" alt="Neon highway at night"/>
+  <canvas id="overlay-canvas"></canvas>
+
+  <div class="hitzone" id="hz-character" data-target="character"></div>
+  <div class="hitzone" id="hz-highway" data-target="highway"></div>
+  <div class="hitzone" id="hz-stars" data-target="stars"></div>
+  <div class="hitzone" id="hz-moon" data-target="moon"></div>
+  <div class="hitzone" id="hz-mountains" data-target="mountains"></div>
+  <div class="hitzone" id="hz-horizon" data-target="horizon"></div>
+  <div class="hitzone" id="hz-headlights" data-target="headlights"></div>
+  <div class="hitzone" id="hz-roadside" data-target="roadside"></div>
+  <div class="hitzone" id="hz-destination" data-target="destination"></div>
+
+  <div class="highlight-ring" id="ring-character"></div>
+  <div class="highlight-ring" id="ring-highway"></div>
+  <div class="highlight-ring" id="ring-stars"></div>
+  <div class="highlight-ring" id="ring-moon"></div>
+  <div class="highlight-ring" id="ring-mountains"></div>
+  <div class="highlight-ring" id="ring-horizon"></div>
+  <div class="highlight-ring" id="ring-headlights"></div>
+  <div class="highlight-ring" id="ring-roadside"></div>
+  <div class="highlight-ring" id="ring-destination"></div>
+</div>
+
+<div id="tooltip">
+  <span class="tt-close" id="tt-close">✕</span>
+  <div class="tt-label" id="tt-label"></div>
+  <div class="tt-title" id="tt-title"></div>
+  <div class="tt-desc" id="tt-desc"></div>
+</div>
+
+<div id="dialogue-box">
+  <div class="speaker" id="dlg-speaker"></div>
+  <div class="text" id="dlg-text"></div>
+  <div class="continue" id="dlg-continue">▼ CLICK TO CONTINUE</div>
+</div>
+
+<div id="suspense-screen">
+  <div class="q" id="suspense-q"></div>
+  <div class="cont" id="suspense-cont">Continue →</div>
+</div>
+
+<div id="chapter-screen">
+  <div class="ch-num">CHAPTER 3</div>
+  <div class="ch-title">THE TOWN</div>
+  <div class="ch-obj-label">OBJECTIVE</div>
+  <div class="ch-obj">Reach the supermarket before midnight.</div>
+  <div class="ch-continue">PRESS ANY KEY OR CLICK TO CONTINUE</div>
+  <div class="ch-redirect">→ Continue to Chapter 3</div>
+</div>
+
+<div id="achievements"></div>
+
+<div id="hud">
+  <div class="hud-item" id="hud-time">⏱ 6:00 PM — 6h to midnight</div>
+  <div class="hud-item" id="hud-discovered">📍 Discovered: <span id="hud-count">0</span>/9</div>
+</div>
+
+<div id="fade"></div>
+
+<script>
+// ─── CONFIG ─────────────────────────────────────────────────────────────────
+const SAVE_KEY = 'roadhome_save_v1';
+const CHAPTER3_URL = 'https://github.com/Muntasir-UwU/Birthday/blob/main/the-birthday-ride.html';
+const TOOLTIP_DATA = {
+  character:{label:'Person',title:'A husband racing against time.',desc:'Tomorrow is his wife\'s birthday. He secretly ordered a cake from the supermarket in town. His car broke down. No buses run this late. He stands at the roadside, hoping.'},
+  highway:{label:'Location',title:'The only route connecting the countryside to town.',desc:'This two-lane road cuts through the dark valley. It is the single thread connecting his world to the one where the cake waits.'},
+  stars:{label:'Witnesses',title:'Silent witnesses to tonight\'s journey.',desc:'Millions of light-years away, each star burns with indifferent brilliance. They have watched countless desperate walks. They will watch this one too.'},
+  moon:{label:'Navigation',title:'The brightest light in the empty countryside.',desc:'The moon rises full tonight — the only streetlamp for miles. Its pale glow stretches the man\'s shadow long across the asphalt.'},
+  mountains:{label:'Landscape',title:'Dark silhouettes surrounding the road.',desc:'The ridgelines loom like sleeping giants. No paths lead through them. The road is the only way. The mountains ensure that.'},
+  horizon:{label:'Destination',title:'The town lies somewhere beyond.',desc:'Beyond the point where the road vanishes into darkness lies everything — the supermarket, the cake, the birthday surprise, the reason for all of this.'},
+  headlights:{label:'Travellers',title:'Unknown travelers moving through the night.',desc:'A pair of headlights appeared in the distance, grew bright — and swept past without slowing. He turned to watch the red taillights disappear. He kept walking.'},
+  roadside:{label:'Place',title:'The place where hope and chance meet.',desc:'The gravel shoulder is worn smooth by others who have stood here before him. He scuffs his shoe. He extends his arm. He waits.'},
+  destination:{label:'Objective',title:'The supermarket holding the birthday cake.',desc:'Ordered three days ago. Chocolate, two tiers, her name in blue icing. It closes at midnight. He has six hours. He is twelve kilometres away. On foot.'},
+};
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let state = {
+  dialogueActive: false,
+  dialogueIndex: 0,
+  discovered: {},
+  achievements: [],
+  chapterDone: false,
+  suspenseDone: false,
+};
+function loadState(){
+  try{const s=localStorage.getItem(SAVE_KEY);if(s)Object.assign(state,JSON.parse(s));}catch(e){}
+}
+function saveState(){
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify(state));}catch(e){}
+}
+
+// ─── DIALOGUE SCRIPT ─────────────────────────────────────────────────────────
+const DIALOGUE = [
+  {speaker:'NARRATOR',text:'The countryside road was almost empty.'},
+  {speaker:'NARRATOR',text:'Only six hours remained before midnight.'},
+  {speaker:'NARRATOR',text:'He had one goal.'},
+  {speaker:'NARRATOR',text:"Reach town before his wife's birthday began."},
+  {speaker:'NARRATOR',text:'The birthday cake was waiting at a supermarket.'},
+  {speaker:'NARRATOR',text:'But town was far away.'},
+  {speaker:'MAN',text:"If I don't get there in time..."},
+  {speaker:'MAN',text:'The surprise will be ruined.'},
+  {speaker:'NARRATOR',text:'The wind drifted quietly across the road.'},
+  {speaker:'NARRATOR',text:'A few cars passed by.'},
+  {speaker:'NARRATOR',text:'None of them stopped.'},
+  {speaker:'MAN',text:'Just one ride.'},
+  {speaker:'MAN',text:"That's all I need."},
+  {speaker:'NARRATOR',text:'Minutes passed.'},
+  {speaker:'NARRATOR',text:'The night became colder.'},
+  {speaker:'NARRATOR',text:'The stars shined brighter overhead.'},
+  {speaker:'NARRATOR',text:'Then...'},
+  {speaker:'NARRATOR',text:'A faint light appeared in the distance.'},
+  {speaker:'NARRATOR',text:'At first it looked like another star.'},
+  {speaker:'NARRATOR',text:'But it kept growing brighter.'},
+  {speaker:'MAN',text:'Please...'},
+  {speaker:'MAN',text:'Let this be the one.'},
+  {speaker:'NARRATOR',text:'The sound of an engine echoed through the darkness.'},
+  {speaker:'NARRATOR',text:'The approaching light reflected off the road.'},
+  {speaker:'NARRATOR',text:'Closer.'},
+  {speaker:'NARRATOR',text:'And closer.'},
+  {speaker:'NARRATOR',text:'The man stepped forward.'},
+  {speaker:'NARRATOR',text:'The headlights illuminated his face.'},
+  {speaker:'NARRATOR',text:'For a brief moment...'},
+  {speaker:'NARRATOR',text:'It felt like fate had finally answered.'},
+  {speaker:'NARRATOR',text:'The vehicle reached him.'},
+  {speaker:'NARRATOR',text:'...'},
+  {speaker:'NARRATOR',text:'...'},
+  {speaker:'NARRATOR',text:'The screen slowly fades to black.',special:'fade'},
+];
+
+// ─── CANVAS ANIMATION ────────────────────────────────────────────────────────
+const canvas = document.getElementById('overlay-canvas');
+const ctx = canvas.getContext('2d');
+let W,H;
+function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
+window.addEventListener('resize',resize);resize();
+
+// Stars
+const STARS = Array.from({length:200},()=>({
+  x:Math.random(),y:Math.random()*0.45,
+  r:Math.random()*1.5+0.3,
+  twinkle:Math.random()*Math.PI*2,
+  speed:Math.random()*0.02+0.005,
+  opacity:Math.random()*0.5+0.3,
+}));
+// Shooting star
+let shootingStar = null;
+let shootTimer = 0;
+// Wind particles
+const WIND = Array.from({length:50},()=>({
+  x:Math.random(),y:Math.random(),
+  vx:Math.random()*0.003+0.001,
+  vy:(Math.random()-0.5)*0.0005,
+  opacity:Math.random()*0.3+0.05,
+  len:Math.random()*0.03+0.01,
+  life:Math.random(),
+}));
+// Headlight pair
+let car = {x:0.38,y:0.52,vx:0.0008,size:3,opacity:0,phase:'idle',delay:6000,timer:0};
+
+let lastTime = 0;
+function animate(ts){
+  requestAnimationFrame(animate);
+  const dt = Math.min(ts-lastTime,50);lastTime=ts;
+  ctx.clearRect(0,0,W,H);
+
+  // Twinkle stars
+  STARS.forEach(s=>{
+    s.twinkle+=s.speed*dt*0.05;
+    const a = s.opacity*(0.5+0.5*Math.sin(s.twinkle));
+    ctx.beginPath();
+    ctx.arc(s.x*W,s.y*H,s.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${a})`;
+    ctx.fill();
+  });
+
+  // Shooting star
+  shootTimer+=dt;
+  if(shootTimer>8000&&!shootingStar){
+    shootTimer=0;
+    shootingStar={x:Math.random()*0.6+0.1,y:Math.random()*0.3,vx:0.004,vy:0.002,trail:40,opacity:1};
+  }
+  if(shootingStar){
+    shootingStar.x+=shootingStar.vx;shootingStar.y+=shootingStar.vy;
+    shootingStar.opacity-=0.012;
+    const g=ctx.createLinearGradient((shootingStar.x-shootingStar.vx*shootingStar.trail)*W,(shootingStar.y-shootingStar.vy*shootingStar.trail)*H,shootingStar.x*W,shootingStar.y*H);
+    g.addColorStop(0,'rgba(255,255,255,0)');
+    g.addColorStop(1,`rgba(200,240,255,${shootingStar.opacity})`);
+    ctx.beginPath();
+    ctx.moveTo((shootingStar.x-shootingStar.vx*shootingStar.trail)*W,(shootingStar.y-shootingStar.vy*shootingStar.trail)*H);
+    ctx.lineTo(shootingStar.x*W,shootingStar.y*H);
+    ctx.strokeStyle=g;ctx.lineWidth=1.5;ctx.stroke();
+    if(shootingStar.opacity<=0)shootingStar=null;
+  }
+
+  // Wind
+  WIND.forEach(w=>{
+    w.x+=w.vx;w.life+=0.005;
+    if(w.x>1.1||w.life>1){w.x=-0.05;w.y=Math.random();w.life=0;w.opacity=Math.random()*0.25+0.03;}
+    const fade=Math.sin(w.life*Math.PI);
+    ctx.beginPath();
+    ctx.moveTo(w.x*W,w.y*H);ctx.lineTo((w.x+w.len)*W,(w.y+w.vy*100)*H);
+    ctx.strokeStyle=`rgba(150,200,255,${w.opacity*fade})`;ctx.lineWidth=0.7;ctx.stroke();
+  });
+
+  // Car headlights
+  car.timer+=dt;
+  if(car.phase==='idle'&&car.timer>car.delay){car.phase='entering';car.x=0.38;car.y=0.52;car.opacity=0;car.timer=0;}
+  if(car.phase==='entering'){
+    car.opacity=Math.min(car.opacity+0.01,0.9);car.x+=car.vx;car.y+=0.0003;
+    if(car.x>0.52){car.phase='passing';}}
+  if(car.phase==='passing'){car.x+=0.003;car.y+=0.001;car.opacity=Math.max(car.opacity-0.015,0);if(car.opacity<=0){car.phase='idle';car.delay=Math.random()*12000+6000;car.timer=0;}}
+  if(car.phase!=='idle'){
+    const lx=car.x*W,ly=car.y*H;
+    // Left beam
+    const g1=ctx.createRadialGradient(lx,ly,0,lx,ly,80);
+    g1.addColorStop(0,`rgba(200,240,255,${car.opacity*0.8})`);g1.addColorStop(1,'rgba(200,240,255,0)');
+    ctx.beginPath();ctx.arc(lx-8,ly,60,0,Math.PI*2);ctx.fillStyle=g1;ctx.fill();
+    // Right beam
+    const g2=ctx.createRadialGradient(lx+10,ly,0,lx+10,ly,80);
+    g2.addColorStop(0,`rgba(200,240,255,${car.opacity*0.8})`);g2.addColorStop(1,'rgba(200,240,255,0)');
+    ctx.beginPath();ctx.arc(lx+18,ly,60,0,Math.PI*2);ctx.fillStyle=g2;ctx.fill();
+    // Road reflection
+    const rg=ctx.createLinearGradient(lx,ly,lx,ly+H*0.15);
+    rg.addColorStop(0,`rgba(100,180,255,${car.opacity*0.15})`);rg.addColorStop(1,'rgba(100,180,255,0)');
+    ctx.beginPath();ctx.rect(lx-40,ly,80,H*0.15);ctx.fillStyle=rg;ctx.fill();
+  }
+
+  // Moon glow pulse
+  const mg=ctx.createRadialGradient(W*0.87,H*0.08,10,W*0.87,H*0.08,80);
+  mg.addColorStop(0,`rgba(220,240,255,${0.04+0.01*Math.sin(ts*0.0007)})`);
+  mg.addColorStop(1,'rgba(220,240,255,0)');
+  ctx.beginPath();ctx.arc(W*0.87,H*0.08,80,0,Math.PI*2);ctx.fillStyle=mg;ctx.fill();
+
+  // Road neon glow — slight blue shimmer on lane lines
+  const rng=ctx.createLinearGradient(W*0.48,H*0.5,W*0.5,H);
+  rng.addColorStop(0,`rgba(0,150,255,${0.03+0.01*Math.sin(ts*0.001)})`);
+  rng.addColorStop(1,'rgba(0,150,255,0)');
+  ctx.beginPath();ctx.rect(W*0.47,H*0.5,W*0.06,H*0.5);ctx.fillStyle=rng;ctx.fill();
+
+  // Character red glow
+  if(!state.dialogueActive){
+    const cg=ctx.createRadialGradient(W*0.675,H*0.79,2,W*0.675,H*0.79,40);
+    cg.addColorStop(0,`rgba(255,60,40,${0.25+0.1*Math.sin(ts*0.0015)})`);
+    cg.addColorStop(1,'rgba(255,60,40,0)');
+    ctx.beginPath();ctx.arc(W*0.675,H*0.79,40,0,Math.PI*2);ctx.fillStyle=cg;ctx.fill();
+  }
+}
+requestAnimationFrame(animate);
+
+// ─── TOOLTIP ─────────────────────────────────────────────────────────────────
+const tooltip = document.getElementById('tooltip');
+const rings = {};
+['character','highway','stars','moon','mountains','horizon','headlights','roadside','destination'].forEach(k=>{
+  rings[k]=document.getElementById('ring-'+k);
+});
+
+function positionRing(target){
+  const hz = document.getElementById('hz-'+target);
+  const r = rings[target];
+  if(!hz||!r)return;
+  const rect=hz.getBoundingClientRect();
+  const cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
+  const sz=Math.max(rect.width,rect.height)+20;
+  r.style.cssText=`left:${cx-sz/2}px;top:${cy-sz/2}px;width:${sz}px;height:${sz}px;display:block;`;
+}
+function hideAllRings(){
+  Object.values(rings).forEach(r=>{r.style.display='none';});
+}
+
+let activeTarget=null;
+document.querySelectorAll('.hitzone').forEach(hz=>{
+  hz.addEventListener('click',e=>{
+    if(state.dialogueActive)return;
+    e.stopPropagation();
+    const target=hz.dataset.target;
+    if(target==='character'){
+      startDialogue();return;
+    }
+    if(activeTarget===target){
+      tooltip.style.display='none';hideAllRings();activeTarget=null;return;
+    }
+    activeTarget=target;
+    const d=TOOLTIP_DATA[target];
+    document.getElementById('tt-label').textContent=d.label;
+    document.getElementById('tt-title').textContent=d.title;
+    document.getElementById('tt-desc').textContent=d.desc;
+    tooltip.style.display='block';
+    hideAllRings();
+    positionRing(target);
+    markDiscovered(target);
+  });
+});
+document.getElementById('tt-close').addEventListener('click',()=>{
+  tooltip.style.display='none';hideAllRings();activeTarget=null;
+});
+
+// ─── ACHIEVEMENTS ────────────────────────────────────────────────────────────
+const ACHIEVEMENTS_DEFS = {
+  first_look:{label:'🔍 First Look — Explored the scene'},
+  half_explored:{label:'🗺️ Explorer — Found 5 objects'},
+  all_explored:{label:'⭐ Omniscient — Discovered everything'},
+  heard_story:{label:'📖 Witness — Heard his story'},
+};
+function markDiscovered(k){
+  if(!state.discovered[k]){
+    state.discovered[k]=true;
+    const n=Object.keys(state.discovered).length;
+    if(n===1)grantAchievement('first_look');
+    if(n===5)grantAchievement('half_explored');
+    if(n===9)grantAchievement('all_explored');
+    document.getElementById('hud-count').textContent=n;
+    saveState();
+  }
+}
+function grantAchievement(k){
+  if(state.achievements.includes(k))return;
+  state.achievements.push(k);
+  const def=ACHIEVEMENTS_DEFS[k];
+  if(!def)return;
+  const el=document.createElement('div');
+  el.className='ach-badge';el.textContent=def.label;
+  document.getElementById('achievements').appendChild(el);
+  setTimeout(()=>el.classList.add('show'),50);
+  setTimeout(()=>{el.classList.remove('show');setTimeout(()=>el.remove(),600);},4000);
+  saveState();
+}
+
+// ─── DIALOGUE ENGINE ─────────────────────────────────────────────────────────
+const dlgBox = document.getElementById('dialogue-box');
+const dlgSpeaker = document.getElementById('dlg-speaker');
+const dlgText = document.getElementById('dlg-text');
+let typeTimer=null, typeIdx=0, curLine='';
+
+function startDialogue(){
+  state.dialogueActive=true;
+  state.dialogueIndex=0;
+  tooltip.style.display='none';hideAllRings();activeTarget=null;
+  dlgBox.style.display='block';
+  showLine(0);
+  markDiscovered('character');
+  grantAchievement('heard_story');
+}
+function showLine(idx){
+  if(idx>=DIALOGUE.length){endDialogue();return;}
+  const line=DIALOGUE[idx];
+  dlgSpeaker.textContent=line.speaker;
+  dlgText.textContent='';
+  clearTimeout(typeTimer);
+  curLine=line.text;typeIdx=0;
+  typeNext();
+  if(line.special==='fade'){
+    setTimeout(()=>{
+      document.getElementById('fade').classList.add('fading');
+      setTimeout(showSuspense,1200);
+    },1000);
+  }
+}
+function typeNext(){
+  if(typeIdx<curLine.length){
+    dlgText.textContent+=curLine[typeIdx++];
+    typeTimer=setTimeout(typeNext,36);
+  }
+}
+function advanceDialogue(){
+  if(!state.dialogueActive)return;
+  clearTimeout(typeTimer);
+  if(typeIdx<curLine.length){
+    dlgText.textContent=curLine;typeIdx=curLine.length;return;
+  }
+  state.dialogueIndex++;
+  if(state.dialogueIndex>=DIALOGUE.length){endDialogue();return;}
+  showLine(state.dialogueIndex);
+}
+function endDialogue(){
+  state.dialogueActive=false;
+  dlgBox.style.display='none';
+}
+dlgBox.addEventListener('click',advanceDialogue);
+document.addEventListener('keydown',e=>{
+  if(state.dialogueActive&&(e.code==='Space'||e.code==='Enter'||e.code==='ArrowRight'))advanceDialogue();
+  if(state.suspenseDone&&(e.code==='Space'||e.code==='Enter'))goToChapter3();
+});
+
+// ─── SUSPENSE + CHAPTER ──────────────────────────────────────────────────────
+function showSuspense(){
+  document.getElementById('suspense-q').textContent='Did the driver stop?';
+  const ss=document.getElementById('suspense-screen');
+  ss.classList.add('visible');
+  state.suspenseDone=false;
+  document.getElementById('suspense-cont').addEventListener('click',showChapterTransition,{once:true});
+}
+function showChapterTransition(){
+  document.getElementById('suspense-screen').classList.remove('visible');
+  setTimeout(()=>{
+    document.getElementById('fade').classList.remove('fading');
+    const chScreen = document.getElementById('chapter-screen');
+    chScreen.classList.add('visible');
+    state.suspenseDone=true;saveState();
+    // Auto-redirect after 4 seconds, or on click/keypress
+    setTimeout(goToChapter3, 4000);
+  },600);
+}
+
+// ─── REDIRECT TO CHAPTER 3 ───────────────────────────────────────────────────
+function goToChapter3(){
+  saveState();
+  // Fade out then redirect
+  const fade = document.getElementById('fade');
+  fade.style.transition='opacity 0.6s';
+  fade.classList.add('fading');
+  setTimeout(()=>{
+    window.location.href = CHAPTER3_URL;
+  }, 700);
+}
+
+// Chapter screen click and keydown redirect
+document.getElementById('chapter-screen').addEventListener('click', ()=>{
+  if(state.suspenseDone) goToChapter3();
+});
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+loadState();
+document.getElementById('hud-count').textContent=Object.keys(state.discovered).length;
+
+// Set background image via external link
+(function(){
+  const imgEl = document.getElementById('bg-img');
+  imgEl.src = 'https://raw.githubusercontent.com/Muntasir-UwU/Birthday/main/lift.png';
+})();
+</script>
+</body>
+</html>

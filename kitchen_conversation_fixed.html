@@ -191,7 +191,7 @@ for (let z = -6; z <= 6; z += 6) {
 // KITCHEN COUNTER
 const counter = box(4, 1, 1.5, wireMat(0x0066cc, 0.6), -1, 0.5, 0.5);
 scene.add(counter);
-const counterEdge = addEdges(counter, 0x00aaff, 0.9);
+const counterEdge = addEdgecounter, 0x00aaff, 0.9);
 interactives.push({ mesh: counter, name: 'Kitchen Counter', label: 'Kitchen Counter', story: 'The conversation happened here while they were eating pancakes.', camPos: new THREE.Vector3(4, 5, 6), camLook: new THREE.Vector3(-1, 0.5, 0.5), edgeMesh: counterEdge });
 const counterTop = box(4, 0.08, 1.5, wireMat(0x0099ff, 0.4), -1, 1.06, 0.5);
 scene.add(counterTop);
@@ -536,11 +536,25 @@ function handleClick(nx, ny) {
     setTimeout(() => { startNarration(NARRATION_SCENE2, () => { state.scene2Done = true; saveState(); updateProgress(); showPanel(obj.label, obj.story); }); }, 600);
     return;
   }
-  if (obj.isScene3 && state.scene1Done && !state.scene3Done) {
-    focusCamera(obj.camPos, obj.camLook);
-    setTimeout(() => { startNarration(NARRATION_SCENE3, () => { state.scene3Done = true; saveState(); updateProgress(); window.location.href = 'https://muntasir-uwu.github.io/Birthday/index-1.html'; }); }, 600);
-    return;
+  if (obj.isScene3) {
+  focusCamera(obj.camPos, obj.camLook);
+  if (state.scene1Done && !state.scene3Done) {
+    setTimeout(() => {
+      startNarration(NARRATION_SCENE3, () => {
+        state.scene3Done = true;
+        saveState();
+        updateProgress();
+        window.location.href = 'https://raw.githubusercontent.com/Muntasir-UwU/Birthday/main/the-birthday-ride.html';
+      });
+    }, 600);
+  } else {
+    // Already done OR scene 1 not done — redirect immediately every time
+    setTimeout(() => {
+      window.location.href = 'https://raw.githubusercontent.com/Muntasir-UwU/Birthday/main/the-birthday-ride.html';
+    }, 400);
   }
+  return;
+}
   state.focusedObj = obj;
   focusCamera(obj.camPos, obj.camLook);
   setTimeout(() => showPanel(obj.label, obj.story), 500);

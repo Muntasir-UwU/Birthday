@@ -495,6 +495,33 @@ function endNarration() {
 narrationOverlay.addEventListener('click', advanceNarration);
 narrationOverlay.addEventListener('touchend', e => { e.preventDefault(); advanceNarration(); }, { passive: false });
 
+// NEXT ROUND
+function goNextRound() {
+  // Fade to black then show "next round" overlay
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:70;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;opacity:0;transition:opacity 1s;font-family:Courier New,monospace;';
+  const title = document.createElement('div');
+  title.textContent = 'END OF SCENE';
+  title.style.cssText = 'color:#00eeff;font-size:clamp(18px,4vw,32px);letter-spacing:6px;text-transform:uppercase;text-shadow:0 0 30px rgba(0,238,255,0.8);';
+  const sub = document.createElement('div');
+  sub.textContent = 'He walked into the night for her.';
+  sub.style.cssText = 'color:rgba(0,238,255,0.6);font-size:clamp(12px,2.5vw,16px);letter-spacing:2px;text-align:center;padding:0 20px;';
+  const btn = document.createElement('button');
+  btn.textContent = 'Next Scene';
+  btn.style.cssText = 'margin-top:16px;padding:10px 28px;background:transparent;border:1px solid #00eeff;color:#00eeff;font-family:Courier New,monospace;font-size:12px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;box-shadow:0 0 12px rgba(0,238,255,0.3);transition:all 0.3s;';
+  btn.onmouseover = () => { btn.style.background = 'rgba(0,238,255,0.1)'; btn.style.boxShadow = '0 0 24px rgba(0,238,255,0.6)'; };
+  btn.onmouseout = () => { btn.style.background = 'transparent'; btn.style.boxShadow = '0 0 12px rgba(0,238,255,0.3)'; };
+  btn.addEventListener('click', () => {
+    localStorage.removeItem('kitchenStory');
+    location.reload();
+  });
+  overlay.appendChild(title);
+  overlay.appendChild(sub);
+  overlay.appendChild(btn);
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => { overlay.style.opacity = '1'; });
+}
+
 // INTERACTION
 function handleClick(nx, ny) {
   if (state.dialogueActive || state.narrationActive || state.interactionLocked) return;
@@ -511,7 +538,7 @@ function handleClick(nx, ny) {
   }
   if (obj.isScene3 && state.scene1Done && !state.scene3Done) {
     focusCamera(obj.camPos, obj.camLook);
-    setTimeout(() => { startNarration(NARRATION_SCENE3, () => { state.scene3Done = true; saveState(); updateProgress(); showPanel(obj.label, obj.story); }); }, 600);
+    setTimeout(() => { startNarration(NARRATION_SCENE3, () => { state.scene3Done = true; saveState(); updateProgress(); window.location.href = 'https://muntasir-uwu.github.io/Birthday/index-1.html'; }); }, 600);
     return;
   }
   state.focusedObj = obj;

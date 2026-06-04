@@ -1,1 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Birthday Scene</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #000;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Georgia', serif;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  #scene {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  /* Background */
+  #bg {
+    position: absolute;
+    inset: 0;
+    background-image: url('https://raw.githubusercontent.com/Muntasir-UwU/Birthday/main/kitchen.png');
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    transition: opacity 1.8s ease;
+  }
+  #bg.visible { opacity: 1; }
+
+  #bg-dim {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    pointer-events: none;
+  }
+
+  /* Dialogue box */
+  #dialogue-box {
+    position: absolute;
+    bottom: clamp(12px, 4vh, 40px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(88vw, 520px);
+    background: rgba(10, 5, 0, 0.78);
+    border: 1px solid rgba(255, 200, 130, 0.3);
+    border-radius: 4px;
+    padding: clamp(12px, 3vw, 20px) clamp(16px, 4vw, 28px);
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    pointer-events: none;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  #dialogue-box.visible { opacity: 1; }
+
+  #speaker-name {
+    font-size: clamp(10px, 2.3vw, 13px);
+    color: rgba(255, 195, 100, 0.9);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  #dialogue-text {
+    font-size: clamp(14px, 3.2vw, 19px);
+    color: rgba(255, 248, 235, 0.97);
+    line-height: 1.5;
+    font-style: italic;
+  }
+
+  #tap-hint {
+    margin-top: 8px;
+    font-size: clamp(9px, 1.9vw, 11px);
+    color: rgba(255,200,130,0.45);
+    text-align: right;
+    letter-spacing: 0.1em;
+    animation: blink 1.6s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 0.15; }
+  }
+
+  /* ── CAKE SCENE ── */
+  #cake-scene {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+    pointer-events: none;
+  }
+  #cake-scene.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  #cake-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #candles-row {
+    display: flex;
+    gap: clamp(6px, 2vw, 14px);
+    margin-bottom: -2px;
+    position: relative;
+    z-index: 5;
+  }
+
+  .candle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .flame {
+    width: clamp(8px, 2vw, 12px);
+    height: clamp(14px, 3.5vw, 20px);
+    background: radial-gradient(ellipse at 50% 80%, #fff 0%, #ffe066 30%, #ff9a00 65%, transparent 100%);
+    border-radius: 50% 50% 30% 30%;
+    animation: flicker 0.15s ease-in-out infinite alternate;
+    transform-origin: bottom center;
+    position: relative;
+  }
+
+  .flame::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3px;
+    height: 4px;
+    background: rgba(255,150,0,0.5);
+    border-radius: 50%;
+    filter: blur(2px);
+  }
+
+  .flame.out { display: none; }
+
+  .smoke {
+    width: 4px;
+    height: 0;
+    background: transparent;
+    border-radius: 50%;
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+  }
+  .smoke.puff {
+    animation: smokePuff 2s ease-out forwards;
+  }
+
+  @keyframes flicker {
+    0%   { transform: scaleX(1)   scaleY(1)    rotate(-1deg); }
+    100% { transform: scaleX(0.9) scaleY(1.08) rotate(1.5deg); }
+  }
+
+  @keyframes smokePuff {
+    0%   { height: 0; opacity: 0.6; transform: translateX(-50%) translateY(0) scaleX(1); }
+    40%  { height: 18px; opacity: 0.4; transform: translateX(-50%) translateY(-14px) scaleX(1.4); }
+    100% { height: 28px; opacity: 0; transform: translateX(-50%) translateY(-28px) scaleX(2.2); }
+  }
+
+  .candle-stick {
+    width: clamp(7px, 1.8vw, 11px);
+    height: clamp(18px, 4.5vw, 28px);
+    border-radius: 2px;
+    background: linear-gradient(to bottom, #fff 0%, #ffe8e8 30%, #ff6b6b 60%, #cc2222 100%);
+    box-shadow: inset -2px 0 3px rgba(0,0,0,0.2);
+  }
+
+  #cake-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .tier {
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tier-3 {
+    width: clamp(80px, 20vw, 150px);
+    height: clamp(42px, 10vw, 72px);
+    background: linear-gradient(160deg, #8b1a1a 0%, #c0392b 40%, #e74c3c 70%, #c0392b 100%);
+    border: 2px solid rgba(255,255,255,0.15);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  .tier-3::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 10px;
+    background: #fff1f1;
+    border-radius: 6px 6px 0 0;
+    opacity: 0.55;
+  }
+
+  .tier-2 {
+    width: clamp(110px, 27vw, 200px);
+    height: clamp(48px, 11.5vw, 82px);
+    background: linear-gradient(160deg, #7b1414 0%, #b03030 40%, #d9534f 70%, #b03030 100%);
+    border: 2px solid rgba(255,255,255,0.12);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.18);
+    margin-top: -1px;
+  }
+  .tier-2::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 10px;
+    background: #fff0f0;
+    opacity: 0.5;
+  }
+
+  .tier-1 {
+    width: clamp(140px, 34vw, 250px);
+    height: clamp(54px, 13vw, 94px);
+    background: linear-gradient(160deg, #6a0f0f 0%, #9e2424 40%, #c0392b 70%, #9e2424 100%);
+    border: 2px solid rgba(255,255,255,0.1);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.15);
+    margin-top: -1px;
+  }
+  .tier-1::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 10px;
+    background: #ffeaea;
+    opacity: 0.45;
+  }
+
+  .tier::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 16px;
+    background: radial-gradient(ellipse 14px 12px at 14% 0%, rgba(255,255,255,0.55) 0%, transparent 100%),
+                radial-gradient(ellipse 12px 10px at 38% 0%, rgba(255,255,255,0.45) 0%, transparent 100%),
+                radial-gradient(ellipse 10px 9px at 62% 0%, rgba(255,255,255,0.4) 0%, transparent 100%),
+                radial-gradient(ellipse 13px 11px at 85% 0%, rgba(255,255,255,0.5) 0%, transparent 100%);
+  }
+
+  #cake-plate {
+    width: clamp(155px, 38vw, 275px);
+    height: clamp(10px, 2.5vw, 18px);
+    background: linear-gradient(to bottom, #e8d5c4, #c4a882);
+    border-radius: 50%;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    margin-top: 2px;
+  }
+
+  #blow-instruction {
+    margin-top: clamp(16px, 4vh, 28px);
+    text-align: center;
+    padding: 10px 18px;
+    background: rgba(10,5,0,0.7);
+    border: 1px solid rgba(255,180,80,0.35);
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  #blow-instruction p {
+    font-size: clamp(12px, 2.8vw, 16px);
+    color: rgba(255,235,190,0.9);
+    font-style: italic;
+    letter-spacing: 0.06em;
+  }
+
+  #mic-status {
+    margin-top: 5px;
+    font-size: clamp(9px, 2vw, 11px);
+    color: rgba(255,180,80,0.55);
+    letter-spacing: 0.1em;
+  }
+
+  /* ── END SCREEN ── */
+  #end-screen {
+    position: absolute;
+    inset: 0;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 2s ease;
+  }
+  #end-screen.visible { opacity: 1; }
+
+  #end-text {
+    font-size: clamp(18px, 5vw, 32px);
+    color: rgba(255,235,200,0.9);
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    font-style: italic;
+    opacity: 0;
+    animation: none;
+  }
+  #end-text.fade-in {
+    animation: textFadeIn 2s ease forwards 0.8s;
+  }
+  @keyframes textFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  #fade-overlay {
+    position: absolute;
+    inset: 0;
+    background: #000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1.5s ease;
+    z-index: 50;
+  }
+  #fade-overlay.dark { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="scene">
+
+  <!-- Background -->
+  <div id="bg">
+    <div id="bg-dim"></div>
+  </div>
+
+  <!-- Dialogue box -->
+  <div id="dialogue-box">
+    <div id="speaker-name"></div>
+    <div id="dialogue-text"></div>
+    <div id="tap-hint">tap to continue ▸</div>
+  </div>
+
+  <!-- Cake scene -->
+  <div id="cake-scene">
+    <div id="cake-wrapper">
+      <div id="candles-row"></div>
+      <div id="cake-body">
+        <div class="tier tier-3"></div>
+        <div class="tier tier-2"></div>
+        <div class="tier tier-1"></div>
+      </div>
+      <div id="cake-plate"></div>
+    </div>
+    <div id="blow-instruction">
+      <p>Blow into your microphone to extinguish the candles.</p>
+      <div id="mic-status">Waiting for microphone…</div>
+    </div>
+  </div>
+
+  <!-- End screen -->
+  <div id="end-screen">
+    <div id="end-text">End of Chapter</div>
+  </div>
+
+  <!-- Fade overlay -->
+  <div id="fade-overlay"></div>
+
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  const dialogue = [
+    { speaker: 'Wife',    text: 'You made it.' },
+    { speaker: 'Husband', text: 'I told you I would.' },
+    { speaker: 'Wife',    text: 'I wasn\'t sure.' },
+    { speaker: 'Husband', text: 'Happy Birthday.' },
+    { speaker: 'Wife',    text: 'You remembered.' },
+    { speaker: 'Husband', text: 'Of course.' },
+  ];
+
+  let dialogueIndex = 0;
+  let phase = 'intro';
+
+  const bg         = document.getElementById('bg');
+  const dlgBox     = document.getElementById('dialogue-box');
+  const speakerEl  = document.getElementById('speaker-name');
+  const textEl     = document.getElementById('dialogue-text');
+  const tapHint    = document.getElementById('tap-hint');
+  const cakeScene  = document.getElementById('cake-scene');
+  const endScreen  = document.getElementById('end-screen');
+  const endText    = document.getElementById('end-text');
+  const fadeOv     = document.getElementById('fade-overlay');
+  const micStatus  = document.getElementById('mic-status');
+  const candlesRow = document.getElementById('candles-row');
+
+  const CANDLE_COUNT = 7;
+  let candlesLit = CANDLE_COUNT;
+  let micStream  = null;
+  let analyser   = null;
+  let micInterval = null;
+  let wishingAudio = null;
+
+  // Build candles
+  for (let i = 0; i < CANDLE_COUNT; i++) {
+    const c = document.createElement('div');
+    c.className = 'candle';
+    c.innerHTML = `
+      <div style="position:relative">
+        <div class="flame" id="flame-${i}"></div>
+        <div class="smoke" id="smoke-${i}"></div>
+      </div>
+      <div class="candle-stick"></div>`;
+    candlesRow.appendChild(c);
+  }
+
+  // ── INTRO ──
+  setTimeout(() => { bg.classList.add('visible'); }, 300);
+
+  setTimeout(() => { showDialogue(); }, 1200);
+
+  function showDialogue() {
+    phase = 'dialogue';
+    const d = dialogue[dialogueIndex];
+    speakerEl.textContent = d.speaker;
+    textEl.textContent    = d.text;
+    dlgBox.classList.add('visible');
+    tapHint.textContent = dialogueIndex < dialogue.length - 1
+      ? 'tap to continue ▸'
+      : 'tap to see the cake ▸';
+    tapHint.style.display = 'block';
+  }
+
+  function advance() {
+    if (phase !== 'dialogue') return;
+    dialogueIndex++;
+    if (dialogueIndex < dialogue.length) {
+      dlgBox.classList.remove('visible');
+      setTimeout(showDialogue, 400);
+    } else {
+      dlgBox.classList.remove('visible');
+      setTimeout(showCake, 700);
+    }
+  }
+
+  document.addEventListener('click', advance);
+  function advanceTouch(e) { e.preventDefault(); advance(); }
+  document.addEventListener('touchstart', advanceTouch, { passive: false });
+
+  // ── CAKE ──
+  function showCake() {
+    phase = 'cake';
+    cakeScene.classList.add('visible');
+    initMic();
+  }
+
+  // ── MICROPHONE ──
+  function initMic() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      micStatus.textContent = 'Tap the cake to blow out the candles.';
+      cakeScene.addEventListener('click', () => { if (candlesLit > 0) blowOutCandles(); }, { once: true });
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      .then(stream => {
+        micStream = stream;
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const src = ctx.createMediaStreamSource(stream);
+        analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        src.connect(analyser);
+        micStatus.textContent = '🎤 Mic active — blow now!';
+        const buf = new Uint8Array(analyser.frequencyBinCount);
+        micInterval = setInterval(() => {
+          analyser.getByteFrequencyData(buf);
+          let sum = 0;
+          for (let v of buf) sum += v;
+          const avg = sum / buf.length;
+          if (avg > 22 && candlesLit > 0) blowOutCandles();
+        }, 80);
+      })
+      .catch(() => {
+        micStatus.textContent = 'Tap the cake to blow out the candles.';
+        cakeScene.addEventListener('click', () => { if (candlesLit > 0) blowOutCandles(); }, { once: true });
+      });
+  }
+
+  function blowOutCandles() {
+    if (candlesLit === 0) return;
+    candlesLit = 0;
+    clearInterval(micInterval);
+    if (micStream) micStream.getTracks().forEach(t => t.stop());
+
+    for (let i = 0; i < CANDLE_COUNT; i++) {
+      document.getElementById(`flame-${i}`).classList.add('out');
+      document.getElementById(`smoke-${i}`).classList.add('puff');
+    }
+
+    micStatus.textContent = '🕯️';
+    document.getElementById('blow-instruction').querySelector('p').textContent = '✨';
+    setTimeout(playWishing, 1200);
+  }
+
+  // ── WISHING AUDIO ──
+  function playWishing() {
+    phase = 'audio';
+    document.removeEventListener('click', advance);
+    document.removeEventListener('touchstart', advanceTouch, { passive: false });
+
+    // Use raw GitHub URL directly — no crossOrigin needed (we're not using canvas)
+    wishingAudio = new Audio('https://cdn.jsdelivr.net/gh/Muntasir-UwU/Birthday@main/wishing.mp3');
+    wishingAudio.volume = 1;
+    wishingAudio.addEventListener('ended', endScene, { once: true });
+    wishingAudio.play().catch(() => {
+      // Autoplay blocked — show a tap-to-play prompt
+      const prompt = document.createElement('div');
+      prompt.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:100;cursor:pointer;';
+      prompt.innerHTML = '<div style="color:rgba(255,220,150,0.9);font-family:Georgia,serif;font-style:italic;font-size:clamp(14px,3.5vw,20px);text-align:center;padding:20px;">♪ Tap anywhere to play the song ♪</div>';
+      document.body.appendChild(prompt);
+      function resumeAudio() {
+        wishingAudio.play().then(() => { document.body.removeChild(prompt); }).catch(() => {});
+        prompt.removeEventListener('click', resumeAudio);
+        prompt.removeEventListener('touchstart', resumeAudio);
+      }
+      prompt.addEventListener('click', resumeAudio);
+      prompt.addEventListener('touchstart', resumeAudio, { passive: true });
+    });
+  }
+
+  // ── ENDING ──
+  function endScene() {
+    phase = 'end';
+    fadeOv.classList.add('dark');
+    if (wishingAudio && !wishingAudio.paused) {
+      let vol = wishingAudio.volume;
+      const fadeAudio = setInterval(() => {
+        vol = Math.max(0, vol - 0.04);
+        wishingAudio.volume = vol;
+        if (vol <= 0) { clearInterval(fadeAudio); wishingAudio.pause(); }
+      }, 80);
+    }
+    setTimeout(() => {
+      endScreen.classList.add('visible');
+      endText.classList.add('fade-in');
+    }, 1600);
+  }
+
+})();
+</script>
+</body>
+</html>
 

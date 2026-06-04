@@ -5,302 +5,545 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>THE BIRTHDAY RIDE</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: #000;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    font-family: 'Courier New', monospace;
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700&family=Bebas+Neue&family=Montserrat:wght@100;200;300;400&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --black: #000000;
+    --white: #ffffff;
+    --white-dim: rgba(255,255,255,0.6);
+    --white-faint: rgba(255,255,255,0.15);
+    --white-ghost: rgba(255,255,255,0.08);
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--black);
     overflow: hidden;
+    cursor: none;
+    font-family: 'Montserrat', sans-serif;
     touch-action: manipulation;
   }
+
+  /* ─── CURSOR ────────────────────────────── */
+  .cursor {
+    position: fixed;
+    width: 6px; height: 6px;
+    background: var(--white);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%,-50%);
+    transition: transform 0.1s ease, opacity 0.3s ease;
+    mix-blend-mode: difference;
+  }
+
+  /* ─── GRAIN ─────────────────────────────── */
+  .grain {
+    position: fixed;
+    inset: -50%;
+    width: 200%; height: 200%;
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0.028;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    animation: grain-shift 0.12s steps(1) infinite;
+  }
+  @keyframes grain-shift {
+    0%   { transform: translate(0,0); }
+    10%  { transform: translate(-3%,-2%); }
+    20%  { transform: translate(2%,3%); }
+    30%  { transform: translate(-1%,2%); }
+    40%  { transform: translate(3%,-1%); }
+    50%  { transform: translate(-2%,1%); }
+    60%  { transform: translate(1%,-3%); }
+    70%  { transform: translate(-3%,2%); }
+    80%  { transform: translate(2%,-2%); }
+    90%  { transform: translate(-1%,3%); }
+    100% { transform: translate(0,0); }
+  }
+
+  /* ─── VIGNETTE ──────────────────────────── */
+  .vignette {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 50;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.85) 100%);
+  }
+
+  /* ─── CINEMATIC BARS ────────────────────── */
+  .cinematic-bar {
+    position: fixed;
+    left: 0; right: 0;
+    height: clamp(28px,5vh,56px);
+    background: var(--black);
+    z-index: 60;
+  }
+  .bar-top    { top: 0; }
+  .bar-bottom { bottom: 0; }
+
+  /* ─── FLASH ─────────────────────────────── */
+  .flash {
+    position: fixed;
+    inset: 0;
+    background: var(--white);
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+  .flash.show { opacity: 1; }
+
+  /* ─── PARTICLES ─────────────────────────── */
+  .particles {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 1s ease;
+  }
+  .particles.show { opacity: 1; }
+
+  /* ─── GAME CONTAINER ────────────────────── */
   #gameContainer {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #gameWrap {
     position: relative;
     width: 100%;
-    max-width: 480px;
+    max-width: 420px;
     aspect-ratio: 9/16;
-    max-height: 100vh;
-    background: #000;
+    max-height: calc(100vh - clamp(56px,10vh,112px));
   }
+
   canvas {
     display: block;
     width: 100%;
     height: 100%;
-    touch-action: manipulation;
   }
-  #overlay {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    pointer-events: none;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-  }
+
+  /* ─── FADE LAYER ────────────────────────── */
   #fadeLayer {
     position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: #000;
+    inset: 0;
+    background: var(--black);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.6s ease;
     z-index: 10;
   }
+
+  /* ─── SCENE LABEL ───────────────────────── */
+  #sceneLabel {
+    position: absolute;
+    top: 12px;
+    left: 0; right: 0;
+    text-align: center;
+    color: rgba(255,255,255,0.2);
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 200;
+    font-size: clamp(7px, 1.2vw, 9px);
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    pointer-events: none;
+    z-index: 4;
+  }
+
+  /* ─── OVERLAY ───────────────────────────── */
+  #overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+
+  /* ─── CHOICE CONTAINER ──────────────────── */
+  #choiceContainer {
+    pointer-events: all;
+    padding: 12px 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 5;
+    background: linear-gradient(to top, rgba(0,0,0,0.97), rgba(0,0,0,0.7));
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .choiceBtn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.2);
+    color: var(--white-dim);
+    padding: 11px 16px;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 300;
+    font-size: clamp(10px, 2.2vw, 12px);
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    text-align: left;
+    line-height: 1.5;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+  }
+  .choiceBtn:hover, .choiceBtn:active {
+    border-color: rgba(255,255,255,0.7);
+    color: var(--white);
+    background: rgba(255,255,255,0.04);
+  }
+
+  /* ─── DIALOGUE BOX ──────────────────────── */
   #dialogueBox {
     pointer-events: all;
-    background: rgba(0,0,0,0.88);
-    border-top: 2px solid #00aaff;
-    padding: 14px 16px 10px;
+    background: linear-gradient(to top, rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.82) 100%);
+    border-top: 1px solid rgba(255,255,255,0.12);
+    padding: 16px 20px 14px;
     min-height: 130px;
     cursor: pointer;
     position: relative;
     z-index: 5;
   }
+
   #speakerName {
-    color: #ff2d78;
-    font-size: 11px;
-    font-weight: bold;
-    letter-spacing: 3px;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 200;
+    font-size: clamp(8px, 1.4vw, 10px);
+    letter-spacing: 0.5em;
     text-transform: uppercase;
-    margin-bottom: 8px;
-    min-height: 16px;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 10px;
+    min-height: 14px;
   }
+
   #dialogueText {
-    color: #fff;
-    font-size: 13px;
-    line-height: 1.7;
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-size: clamp(14px, 3vw, 18px);
+    line-height: 1.75;
+    color: var(--white);
     min-height: 60px;
+    letter-spacing: 0.02em;
   }
+
   #tapHint {
-    color: #00aaff;
-    font-size: 9px;
-    letter-spacing: 2px;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 100;
+    font-size: clamp(7px, 1.2vw, 9px);
+    color: rgba(255,255,255,0.25);
+    letter-spacing: 0.35em;
     text-align: right;
-    margin-top: 8px;
+    margin-top: 10px;
+    text-transform: uppercase;
     opacity: 0;
     transition: opacity 0.4s;
+    animation: tapblink 1.5s infinite;
   }
   #tapHint.visible { opacity: 1; }
-  #choiceContainer {
-    pointer-events: all;
-    padding: 8px 16px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    z-index: 5;
-    background: rgba(0,0,0,0.88);
-    border-top: 1px solid #222;
-  }
-  .choiceBtn {
-    background: transparent;
-    border: 1px solid #00aaff;
-    color: #fff;
-    padding: 10px 14px;
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    cursor: pointer;
-    text-align: left;
-    letter-spacing: 0.5px;
-    transition: background 0.2s, color 0.2s;
-    line-height: 1.5;
-  }
-  .choiceBtn:hover, .choiceBtn:active {
-    background: #00aaff22;
-    color: #00aaff;
-  }
-  #titleScreen {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: #000;
-    cursor: pointer;
-    z-index: 20;
-    gap: 0;
-  }
-  #titleScreen h1 {
-    color: #ff2d78;
-    font-size: 22px;
-    letter-spacing: 6px;
-    text-transform: uppercase;
-    text-align: center;
-    line-height: 1.3;
-    font-family: 'Courier New', monospace;
-    font-weight: bold;
-    margin-bottom: 8px;
-  }
-  #titleScreen .subtitle {
-    color: #00aaff;
-    font-size: 9px;
-    letter-spacing: 5px;
-    text-transform: uppercase;
-    margin-bottom: 36px;
-  }
-  #titleScreen .startPrompt {
-    color: #ffffff66;
-    font-size: 10px;
-    letter-spacing: 3px;
-    animation: blink 1.4s infinite;
-  }
-  #titleScreen .saveInfo {
-    position: absolute;
-    bottom: 16px;
-    color: #ffffff33;
-    font-size: 9px;
-    letter-spacing: 2px;
-  }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
-  #endScreen {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: #000;
-    z-index: 30;
-    gap: 10px;
-  }
-  #endScreen .endText {
-    color: #ff2d78;
-    font-size: 11px;
-    letter-spacing: 5px;
-    text-transform: uppercase;
-    font-family: 'Courier New', monospace;
-    opacity: 0;
-    transition: opacity 1.5s;
-  }
-  #endScreen .endSub {
-    color: #00aaff44;
-    font-size: 8px;
-    letter-spacing: 3px;
-    font-family: 'Courier New', monospace;
-    margin-top: 8px;
-    opacity: 0;
-    transition: opacity 1.5s 0.5s;
-  }
-  #sceneLabel {
-    position: absolute;
-    top: 10px;
-    left: 0; right: 0;
-    text-align: center;
-    color: #00aaff55;
-    font-size: 8px;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    pointer-events: none;
-    z-index: 4;
-  }
+  @keyframes tapblink { 0%,100%{opacity:0.25} 50%{opacity:0.6} }
+
+  /* ─── MENU BTN ──────────────────────────── */
   #menuBtn {
     position: absolute;
-    top: 10px;
-    right: 12px;
-    color: #ffffff33;
-    font-size: 9px;
-    letter-spacing: 2px;
+    top: 12px; right: 14px;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 200;
+    color: rgba(255,255,255,0.2);
+    font-size: clamp(7px,1.3vw,9px);
+    letter-spacing: 0.3em;
     cursor: pointer;
     pointer-events: all;
     z-index: 15;
     background: none;
     border: none;
-    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  #menuBtn:hover { color: rgba(255,255,255,0.7); }
+
+  /* ─── TITLE SCREEN ──────────────────────── */
+  #titleScreen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--black);
+    cursor: pointer;
+    z-index: 20;
+    overflow: hidden;
+  }
+
+  .title-eyebrow {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 100;
+    font-size: clamp(7px,1.2vw,9px);
+    letter-spacing: 0.65em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 24px;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.8s ease 0.2s, transform 0.8s ease 0.2s;
+  }
+  .title-eyebrow.reveal { opacity: 1; transform: translateY(0); }
+
+  #titleScreen h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(52px,18vw,96px);
+    letter-spacing: 0.12em;
+    color: var(--white);
+    text-align: center;
+    line-height: 0.95;
+    height: 3em;
+    overflow: hidden;
+  }
+
+  .title-line-wrap {
+    display: block;
+    overflow: hidden;
+    height: 1em;
+  }
+  .title-line-inner {
+    display: block;
+    transform: translateY(110%);
+    transition: transform 1s cubic-bezier(0.16,1,0.3,1);
+  }
+  .title-line-inner.reveal { transform: translateY(0); }
+
+  .title-divider {
+    width: 0;
+    height: 1px;
+    background: rgba(255,255,255,0.35);
+    margin: 24px auto;
+    transition: width 1.2s cubic-bezier(0.4,0,0.2,1) 0.6s;
+  }
+  .title-divider.reveal { width: clamp(50px,12vw,100px); }
+
+  .title-sub {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-style: italic;
+    font-size: clamp(12px,2.5vw,16px);
+    letter-spacing: 0.3em;
+    color: rgba(255,255,255,0.45);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.9s ease 1.4s, transform 0.9s ease 1.4s;
+    text-align: center;
+  }
+  .title-sub.reveal { opacity: 1; transform: translateY(0); }
+
+  .title-start {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 200;
+    font-size: clamp(8px,1.4vw,10px);
+    letter-spacing: 0.45em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+    margin-top: 36px;
+    opacity: 0;
+    transition: opacity 0.8s ease 2.2s;
+    animation: titleBlink 1.6s infinite 2.4s;
+  }
+  .title-start.reveal { opacity: 1; }
+  @keyframes titleBlink { 0%,100%{opacity:0.3} 50%{opacity:0.7} }
+
+  .title-save {
+    position: absolute;
+    bottom: 14px;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 100;
+    font-size: clamp(6px,1vw,8px);
+    letter-spacing: 0.3em;
+    color: rgba(255,255,255,0.2);
+    text-transform: uppercase;
+  }
+
+  /* ─── END SCREEN ────────────────────────── */
+  #endScreen {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--black);
+    z-index: 30;
+    gap: 12px;
+  }
+
+  .end-heading {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(22px,6vw,36px);
+    letter-spacing: 0.25em;
+    color: var(--white);
+    opacity: 0;
+    transition: opacity 1.5s;
+    text-align: center;
+  }
+
+  .end-divider {
+    width: 0;
+    height: 1px;
+    background: rgba(255,255,255,0.3);
+    margin: 0 auto;
+    transition: width 1s ease 0.8s;
+  }
+  .end-divider.open { width: clamp(40px,10vw,80px); }
+
+  .end-sub {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-style: italic;
+    font-size: clamp(11px,2vw,14px);
+    letter-spacing: 0.25em;
+    color: rgba(255,255,255,0.35);
+    opacity: 0;
+    transition: opacity 1.2s ease 0.6s;
+    text-align: center;
   }
 </style>
 </head>
 <body>
+
+<!-- Cursor -->
+<div class="cursor" id="cursor"></div>
+
+<!-- Atmosphere -->
+<div class="grain"></div>
+<div class="vignette"></div>
+<div class="cinematic-bar bar-top"></div>
+<div class="cinematic-bar bar-bottom"></div>
+<div class="flash" id="flash"></div>
+<canvas class="particles" id="bgParticles"></canvas>
+
+<!-- Game -->
 <div id="gameContainer">
-  <canvas id="gameCanvas"></canvas>
-  <div id="fadeLayer"></div>
-  <div id="sceneLabel" id="sceneLabel"></div>
-  <div id="overlay">
-    <div id="choiceContainer" style="display:none;"></div>
-    <div id="dialogueBox" style="display:none;">
-      <div id="speakerName"></div>
-      <div id="dialogueText"></div>
-      <div id="tapHint">TAP TO CONTINUE ▼</div>
+  <div id="gameWrap">
+    <canvas id="gameCanvas"></canvas>
+    <div id="fadeLayer"></div>
+    <div id="sceneLabel"></div>
+    <div id="overlay">
+      <div id="choiceContainer" style="display:none;"></div>
+      <div id="dialogueBox" style="display:none;">
+        <div id="speakerName"></div>
+        <div id="dialogueText"></div>
+        <div id="tapHint">Continue</div>
+      </div>
     </div>
-    <button id="menuBtn">≡ MENU</button>
-  </div>
-  <div id="titleScreen">
-    <div style="color:#00aaff44;font-size:8px;letter-spacing:4px;margin-bottom:40px;font-family:'Courier New',monospace;">A DETECTIVE STORY</div>
-    <h1>THE<br>BIRTHDAY<br>RIDE</h1>
-    <div class="subtitle">— Chapter One —</div>
-    <div class="startPrompt">TAP TO BEGIN</div>
-    <div class="saveInfo" id="saveInfo"></div>
-  </div>
-  <div id="endScreen">
-    <div class="endText" id="endText">INVESTIGATION CONTINUES...</div>
-    <div class="endSub" id="endSub">— TO BE CONTINUED —</div>
+    <button id="menuBtn">Menu</button>
+
+    <!-- Title Screen -->
+    <div id="titleScreen">
+      <div class="title-eyebrow" id="t-eyebrow">A Detective Story</div>
+      <h1>
+        <span class="title-line-wrap"><span class="title-line-inner" id="tl1">THE</span></span>
+        <span class="title-line-wrap"><span class="title-line-inner" id="tl2">BIRTHDAY</span></span>
+        <span class="title-line-wrap"><span class="title-line-inner" id="tl3">RIDE</span></span>
+      </h1>
+      <div class="title-divider" id="t-divider"></div>
+      <div class="title-sub" id="t-sub">Chapter One</div>
+      <div class="title-start" id="t-start">Tap to Begin</div>
+      <div class="title-save" id="saveInfo"></div>
+    </div>
+
+    <!-- End Screen -->
+    <div id="endScreen">
+      <div class="end-heading" id="endText">Do You know why the killer wasnt identified? </div>
+      <div class="end-divider" id="endDivider"></div>
+      <div class="end-sub" id="endSub">say on inbox.</div>
+    </div>
   </div>
 </div>
 
 <script>
+/* ─── CURSOR ───────────────────────────────────────────────── */
+const cursorEl = document.getElementById('cursor');
+document.addEventListener('mousemove', e => {
+  cursorEl.style.left = e.clientX + 'px';
+  cursorEl.style.top  = e.clientY + 'px';
+});
+
+/* ─── BG PARTICLES ─────────────────────────────────────────── */
+(function() {
+  const cv = document.getElementById('bgParticles');
+  const cx = cv.getContext('2d');
+  let W, H, pts = [];
+  function resize() { W = cv.width = window.innerWidth; H = cv.height = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+  function mkP() {
+    return { x: Math.random()*W, y: H+5, size: Math.random()*1.1+0.2,
+      speed: Math.random()*0.3+0.08, drift: (Math.random()-0.5)*0.25,
+      opacity:0, maxOpacity: Math.random()*0.3+0.04,
+      life:0, maxLife: Math.random()*600+300 };
+  }
+  for (let i=0;i<55;i++){const p=mkP();p.y=Math.random()*H;p.life=Math.random()*p.maxLife;pts.push(p);}
+  function tick(){
+    cx.clearRect(0,0,W,H);
+    pts.forEach((p,i)=>{
+      p.y-=p.speed; p.x+=p.drift; p.life++;
+      const t=p.life/p.maxLife;
+      if(t<0.1) p.opacity=(t/0.1)*p.maxOpacity;
+      else if(t>0.85) p.opacity=((1-t)/0.15)*p.maxOpacity;
+      else p.opacity=p.maxOpacity;
+      if(p.life>=p.maxLife||p.y<-5) pts[i]=mkP();
+      cx.beginPath(); cx.arc(p.x,p.y,p.size,0,Math.PI*2);
+      cx.fillStyle=`rgba(255,255,255,${p.opacity})`; cx.fill();
+    });
+    requestAnimationFrame(tick);
+  }
+  tick();
+  setTimeout(()=>{ document.getElementById('bgParticles').classList.add('show'); }, 800);
+})();
+
+/* ─── FLASH ────────────────────────────────────────────────── */
+function flashTransition(cb) {
+  const f = document.getElementById('flash');
+  f.classList.add('show');
+  setTimeout(()=>{ if(cb) cb(); f.classList.remove('show'); }, 420);
+}
+
+/* ─── GAME CANVAS ──────────────────────────────────────────── */
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const W = 480, H = 854;
 canvas.width = W; canvas.height = H;
 
-// ─── PALETTE ─────────────────────────────────────────────────────────────────
+/* ─── PALETTE (monochrome to match cinematic intro) ────────── */
 const C = {
   bg:      '#000000',
-  road:    '#0a0a1a',
-  roadLine:'#00aaff',
-  env:     '#00aaff',
-  envDim:  '#004488',
-  envGlow: '#0066cc',
-  pink:    '#ff2d78',
-  pinkDim: '#881133',
+  road:    '#080808',
   white:   '#ffffff',
-  grey:    '#333344',
-  greyMid: '#222233',
-  yellow:  '#ffcc00',
-  red:     '#ff3300',
+  dim:     'rgba(255,255,255,0.55)',
+  faint:   'rgba(255,255,255,0.15)',
+  ghost:   'rgba(255,255,255,0.06)',
+  grey:    'rgba(255,255,255,0.08)',
+  greyMid: 'rgba(255,255,255,0.04)',
+  accent:  'rgba(255,255,255,0.9)',
+  red:     'rgba(255,255,255,0.35)', // stains are desaturated
 };
 
-// ─── STATE ────────────────────────────────────────────────────────────────────
-let state = {
-  scene: 'highway',
-  dialogueIndex: 0,
-  choiceMade: null,
-  theory: null,
-};
+/* ─── STATE ────────────────────────────────────────────────── */
+let state = { scene:'highway', dialogueIndex:0, theory:null };
+function saveGame() { localStorage.setItem('tbr_save', JSON.stringify({scene:state.scene,dialogueIndex:state.dialogueIndex,theory:state.theory})); }
+function loadGame() { const s=localStorage.getItem('tbr_save'); if(s){const d=JSON.parse(s);state.scene=d.scene;state.dialogueIndex=d.dialogueIndex;state.theory=d.theory;return true;} return false; }
 
-function saveGame() {
-  localStorage.setItem('tbr_save', JSON.stringify({
-    scene: state.scene,
-    dialogueIndex: state.dialogueIndex,
-    theory: state.theory,
-  }));
-}
-function loadGame() {
-  const s = localStorage.getItem('tbr_save');
-  if (s) { const d = JSON.parse(s); state.scene = d.scene; state.dialogueIndex = d.dialogueIndex; state.theory = d.theory; return true; }
-  return false;
-}
-
-// ─── FADE ─────────────────────────────────────────────────────────────────────
+/* ─── FADE ─────────────────────────────────────────────────── */
 const fadeLayer = document.getElementById('fadeLayer');
-function fadeOut(cb) {
-  fadeLayer.style.opacity = '1';
-  setTimeout(() => { if(cb) cb(); }, 650);
-}
-function fadeIn(cb) {
-  fadeLayer.style.opacity = '0';
-  setTimeout(() => { if(cb) cb(); }, 650);
-}
-function crossFade(cb) {
-  fadeOut(() => { if(cb) cb(); setTimeout(() => fadeIn(), 100); });
-}
+function fadeOut(cb) { fadeLayer.style.opacity='1'; setTimeout(()=>{if(cb)cb();},650); }
+function fadeIn(cb)  { fadeLayer.style.opacity='0'; setTimeout(()=>{if(cb)cb();},650); }
+function crossFade(cb) { fadeOut(()=>{ if(cb)cb(); setTimeout(()=>fadeIn(),100); }); }
 
-// ─── DIALOGUE ENGINE ──────────────────────────────────────────────────────────
+/* ─── DIALOGUE ENGINE ──────────────────────────────────────── */
 const dialogueBox = document.getElementById('dialogueBox');
 const speakerEl   = document.getElementById('speakerName');
 const textEl      = document.getElementById('dialogueText');
@@ -308,813 +551,506 @@ const tapHint     = document.getElementById('tapHint');
 const choiceCont  = document.getElementById('choiceContainer');
 const sceneLabel  = document.getElementById('sceneLabel');
 
-let typing = false, typingTimer = null, currentLine = '';
-let dialogueCallback = null;
+let typing=false, typingTimer=null, currentLine='', dialogueCallback=null;
 
-function typeText(text, speed=28) {
-  textEl.textContent = '';
-  currentLine = text;
-  typing = true;
-  tapHint.classList.remove('visible');
-  let i = 0;
-  clearInterval(typingTimer);
-  typingTimer = setInterval(() => {
-    if (i < text.length) { textEl.textContent += text[i++]; }
-    else { clearInterval(typingTimer); typing = false; tapHint.classList.add('visible'); }
+function typeText(text, speed=30) {
+  textEl.textContent=''; currentLine=text; typing=true;
+  tapHint.classList.remove('visible'); let i=0; clearInterval(typingTimer);
+  typingTimer = setInterval(()=>{
+    if(i<text.length){ textEl.textContent+=text[i++]; }
+    else { clearInterval(typingTimer); typing=false; tapHint.classList.add('visible'); }
   }, speed);
 }
 
 function showDialogue(speaker, text, cb) {
-  choiceCont.style.display = 'none';
-  dialogueBox.style.display = 'block';
+  choiceCont.style.display='none'; dialogueBox.style.display='block';
   speakerEl.textContent = speaker || '';
-  speakerEl.style.color = speaker ? C.pink : C.env;
-  dialogueCallback = cb || null;
-  typeText(text);
+  // All speakers use same subtle white; narrator lines italic
+  if (!speaker) {
+    speakerEl.textContent = '';
+    textEl.style.fontStyle = 'italic';
+    textEl.style.color = 'rgba(255,255,255,0.65)';
+  } else {
+    textEl.style.fontStyle = 'normal';
+    textEl.style.color = 'rgba(255,255,255,1)';
+  }
+  dialogueCallback=cb||null; typeText(text);
 }
 
 function showChoices(prompt, choices, cb) {
-  choiceCont.innerHTML = '';
-  dialogueBox.style.display = 'block';
-  speakerEl.textContent = '';
-  textEl.textContent = prompt;
-  tapHint.classList.remove('visible');
-  typing = false;
-  choices.forEach((ch, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'choiceBtn';
-    btn.textContent = ch.label;
-    btn.onclick = () => {
-      choiceCont.style.display = 'none';
-      cb(i, ch);
-    };
+  choiceCont.innerHTML=''; dialogueBox.style.display='block';
+  speakerEl.textContent=''; textEl.textContent=prompt;
+  textEl.style.fontStyle='italic'; textEl.style.color='rgba(255,255,255,0.6)';
+  tapHint.classList.remove('visible'); typing=false;
+  choices.forEach((ch,i)=>{
+    const btn=document.createElement('button');
+    btn.className='choiceBtn'; btn.textContent=ch.label;
+    btn.onclick=()=>{ choiceCont.style.display='none'; cb(i,ch); };
     choiceCont.appendChild(btn);
   });
-  choiceCont.style.display = 'flex';
+  choiceCont.style.display='flex';
 }
 
 function hideDialogue() {
-  dialogueBox.style.display = 'none';
-  choiceCont.style.display = 'none';
+  dialogueBox.style.display='none'; choiceCont.style.display='none';
   tapHint.classList.remove('visible');
 }
 
-dialogueBox.addEventListener('click', () => {
-  if (typing) {
-    clearInterval(typingTimer);
-    textEl.textContent = currentLine;
-    typing = false;
-    tapHint.classList.add('visible');
-    return;
-  }
-  if (dialogueCallback) {
-    const cb = dialogueCallback;
-    dialogueCallback = null;
-    tapHint.classList.remove('visible');
-    cb();
-  }
+dialogueBox.addEventListener('click', ()=>{
+  if(typing){ clearInterval(typingTimer); textEl.textContent=currentLine; typing=false; tapHint.classList.add('visible'); return; }
+  if(dialogueCallback){ const cb=dialogueCallback; dialogueCallback=null; tapHint.classList.remove('visible'); cb(); }
 });
 
-// ─── SCENE RENDERER ──────────────────────────────────────────────────────────
-function drawSky(nightCity = false) {
-  ctx.fillStyle = C.bg;
-  ctx.fillRect(0, 0, W, H);
-  // Stars
-  ctx.fillStyle = '#ffffff';
-  for (let i = 0; i < 60; i++) {
-    const x = (i * 137.5) % W;
-    const y = (i * 53.3) % (H * 0.45);
-    const s = (i % 3 === 0) ? 1.5 : 0.8;
-    ctx.globalAlpha = 0.3 + (i % 5) * 0.1;
-    ctx.fillRect(x, y, s, s);
+/* ─── DRAW HELPERS (monochrome) ────────────────────────────── */
+function drawSky(nightCity=false) {
+  ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H);
+  // Stars — white dots, very faint
+  for(let i=0;i<70;i++){
+    const x=(i*137.5)%W, y=(i*53.3)%(H*0.42);
+    ctx.globalAlpha=0.08+(i%5)*0.06;
+    ctx.fillStyle=C.white;
+    ctx.fillRect(x,y,(i%3===0)?1.5:0.7,(i%3===0)?1.5:0.7);
   }
-  ctx.globalAlpha = 1;
-  if (nightCity) {
-    // City silhouette
-    ctx.fillStyle = C.envDim;
-    const buildings = [[30,180,60,120],[100,200,50,80],[160,160,70,140],[230,190,55,110],[290,170,65,130],[360,200,50,90],[420,180,60,120]];
-    buildings.forEach(([x,y,w,h]) => {
-      ctx.fillRect(x, y, w, h);
-      // windows
-      ctx.fillStyle = '#00aaff22';
-      for (let r = 0; r < 5; r++) for (let c = 0; c < 3; c++) {
-        if (Math.random() > 0.4) ctx.fillRect(x+8+c*16, y+8+r*20, 8, 12);
-      }
-      ctx.fillStyle = C.envDim;
-    });
+  ctx.globalAlpha=1;
+  if(nightCity){
+    // City silhouette — very dark
+    ctx.fillStyle='rgba(255,255,255,0.04)';
+    [[30,180,60,120],[100,200,50,80],[160,160,70,140],[230,190,55,110],[290,170,65,130],[360,200,50,90],[420,180,60,120]]
+      .forEach(([x,y,w,h])=>{
+        ctx.fillRect(x,y,w,h);
+        ctx.fillStyle='rgba(255,255,255,0.03)';
+        for(let r=0;r<5;r++) for(let c=0;c<3;c++)
+          if(Math.random()>0.5) ctx.fillRect(x+8+c*16,y+8+r*20,8,12);
+        ctx.fillStyle='rgba(255,255,255,0.04)';
+      });
   }
 }
 
-function drawRoad(perspective = true) {
-  // Road surface
-  ctx.fillStyle = '#060612';
-  ctx.fillRect(0, H*0.38, W, H*0.62);
-  // Road edges & center lines with perspective
-  if (perspective) {
-    const vx = W/2, vy = H*0.38;
-    // Left shoulder
-    ctx.strokeStyle = C.env;
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(vx, vy); ctx.lineTo(40, H); ctx.stroke();
-    // Right shoulder
-    ctx.beginPath(); ctx.moveTo(vx, vy); ctx.lineTo(W-40, H); ctx.stroke();
-    // Center dashes
-    ctx.strokeStyle = C.envDim;
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([20, 18]);
-    ctx.beginPath(); ctx.moveTo(vx, vy); ctx.lineTo(W/2, H); ctx.stroke();
+function drawRoad(perspective=true) {
+  ctx.fillStyle='rgba(255,255,255,0.035)'; ctx.fillRect(0,H*0.38,W,H*0.62);
+  if(perspective){
+    const vx=W/2, vy=H*0.38;
+    ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(vx,vy); ctx.lineTo(40,H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(vx,vy); ctx.lineTo(W-40,H); ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1;
+    ctx.setLineDash([20,18]);
+    ctx.beginPath(); ctx.moveTo(vx,vy); ctx.lineTo(W/2,H); ctx.stroke();
     ctx.setLineDash([]);
-    // Lane lines
-    ctx.strokeStyle = C.envDim;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([15,22]);
-    ctx.beginPath(); ctx.moveTo(vx,vy); ctx.lineTo(vx - 80, H); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(vx,vy); ctx.lineTo(vx + 80, H); ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.setLineDash([15,22]);
+    ctx.beginPath(); ctx.moveTo(vx,vy); ctx.lineTo(vx-80,H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(vx,vy); ctx.lineTo(vx+80,H); ctx.stroke();
     ctx.setLineDash([]);
   } else {
-    ctx.strokeStyle = C.env;
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(60, H*0.38); ctx.lineTo(60, H); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(W-60, H*0.38); ctx.lineTo(W-60, H); ctx.stroke();
-    ctx.strokeStyle = C.envDim;
-    ctx.setLineDash([25,20]);
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(W/2, H*0.38); ctx.lineTo(W/2, H); ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(60,H*0.38); ctx.lineTo(60,H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(W-60,H*0.38); ctx.lineTo(W-60,H); ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.setLineDash([25,20]); ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(W/2,H*0.38); ctx.lineTo(W/2,H); ctx.stroke();
     ctx.setLineDash([]);
   }
 }
 
-// Human figure (stick figure style)
-function drawHuman(x, y, scale=1, color=C.pink, lying=false, detective=false) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(scale, scale);
-  ctx.strokeStyle = color;
-  ctx.fillStyle = color;
-  ctx.lineWidth = 2;
-  if (lying) {
-    // Head
-    ctx.beginPath(); ctx.arc(0, -4, 7, 0, Math.PI*2); ctx.fill();
-    // Body
-    ctx.beginPath(); ctx.moveTo(8, -4); ctx.lineTo(36, -4); ctx.stroke();
-    // Arms
-    ctx.beginPath(); ctx.moveTo(18, -4); ctx.lineTo(18, -16); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(24, -4); ctx.lineTo(24, 6); ctx.stroke();
-    // Legs
-    ctx.beginPath(); ctx.moveTo(36, -4); ctx.lineTo(44, -12); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(36, -4); ctx.lineTo(44, 4); ctx.stroke();
+function drawHuman(x,y,scale=1,opacity=1,lying=false,detective=false){
+  ctx.save(); ctx.translate(x,y); ctx.scale(scale,scale);
+  ctx.strokeStyle=`rgba(255,255,255,${opacity})`; ctx.fillStyle=`rgba(255,255,255,${opacity})`;
+  ctx.lineWidth=1.8;
+  if(lying){
+    ctx.beginPath(); ctx.arc(0,-4,7,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(8,-4); ctx.lineTo(36,-4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(18,-4); ctx.lineTo(18,-16); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(24,-4); ctx.lineTo(24,6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(36,-4); ctx.lineTo(44,-12); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(36,-4); ctx.lineTo(44,4); ctx.stroke();
   } else {
-    // Head
-    ctx.beginPath(); ctx.arc(0, -38, 7, 0, Math.PI*2); ctx.fill();
-    // Hat (detective)
-    if (detective) {
-      ctx.fillStyle = C.envGlow;
-      ctx.fillRect(-9, -49, 18, 5);
-      ctx.fillRect(-7, -58, 14, 10);
-      ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(0,-38,7,0,Math.PI*2); ctx.fill();
+    if(detective){
+      ctx.fillStyle=`rgba(255,255,255,${opacity*0.4})`;
+      ctx.fillRect(-9,-49,18,5); ctx.fillRect(-7,-58,14,10);
+      ctx.fillStyle=`rgba(255,255,255,${opacity})`;
     }
-    // Body
-    ctx.beginPath(); ctx.moveTo(0, -31); ctx.lineTo(0, -6); ctx.stroke();
-    // Arms
-    ctx.beginPath(); ctx.moveTo(0, -26); ctx.lineTo(-12, -14); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, -26); ctx.lineTo(12, -14); ctx.stroke();
-    // Legs
-    ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(-8, 12); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(8, 12); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,-31); ctx.lineTo(0,-6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,-26); ctx.lineTo(-12,-14); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,-26); ctx.lineTo(12,-14); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(-8,12); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(8,12); ctx.stroke();
   }
   ctx.restore();
 }
 
-// Car drawing
-function drawCar(x, y, scale=1, color=C.envDim, facing='right') {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(scale * (facing==='left'?-1:1), scale);
-  // Shadow
-  ctx.fillStyle = '#00000088';
-  ctx.fillRect(-52, 8, 104, 10);
-  // Body
-  ctx.fillStyle = color;
-  ctx.fillRect(-50, -12, 100, 22);
-  // Roof
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(-30, -12); ctx.lineTo(-20, -32); ctx.lineTo(22, -32); ctx.lineTo(32, -12);
-  ctx.closePath(); ctx.fill();
-  // Windows
-  ctx.fillStyle = '#00aaff22';
-  ctx.fillRect(-16, -30, 14, 16);
-  ctx.fillRect(2, -30, 14, 16);
-  // Wheels
-  ctx.fillStyle = '#111';
-  ctx.strokeStyle = C.env;
-  ctx.lineWidth = 1.5;
-  [-30, 28].forEach(wx => {
-    ctx.beginPath(); ctx.arc(wx, 10, 10, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.arc(wx, 10, 4, 0, Math.PI*2); ctx.fillStyle = C.envDim; ctx.fill();
-    ctx.fillStyle = '#111';
-  });
-  // Headlights
-  ctx.fillStyle = '#ffff0044';
-  ctx.fillRect(46, -6, 6, 10);
-  // Taillights
-  ctx.fillStyle = '#ff220066';
-  ctx.fillRect(-52, -6, 6, 10);
+function drawCar(x,y,scale=1,opacity=0.5,facing='right'){
+  ctx.save(); ctx.translate(x,y); ctx.scale(scale*(facing==='left'?-1:1),scale);
+  ctx.globalAlpha=opacity;
+  ctx.fillStyle='rgba(255,255,255,0.06)'; ctx.fillRect(-52,8,104,10);
+  ctx.fillStyle='rgba(255,255,255,0.1)'; ctx.fillRect(-50,-12,100,22);
+  ctx.beginPath(); ctx.moveTo(-30,-12); ctx.lineTo(-20,-32); ctx.lineTo(22,-32); ctx.lineTo(32,-12); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.04)'; ctx.fillRect(-16,-30,14,16); ctx.fillRect(2,-30,14,16);
+  ctx.fillStyle='rgba(0,0,0,0.8)'; ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1.2;
+  [-30,28].forEach(wx=>{ ctx.beginPath(); ctx.arc(wx,10,10,0,Math.PI*2); ctx.fill(); ctx.stroke(); });
+  ctx.globalAlpha=1; ctx.restore();
+}
+
+function drawPoliceCar(x,y,scale=1){
+  drawCar(x,y,scale,0.6);
+  ctx.save(); ctx.translate(x,y); ctx.scale(scale,scale);
+  ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.fillRect(-50,-4,100,3);
+  ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.fillRect(-14,-36,10,5);
+  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.fillRect(4,-36,10,5);
+  ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.font='bold 6px Montserrat'; ctx.textAlign='center'; ctx.fillText('POLICE',0,6);
   ctx.restore();
 }
 
-// Police car
-function drawPoliceCar(x, y, scale=1) {
-  drawCar(x, y, scale, '#001133');
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(scale, scale);
-  // Police stripe
-  ctx.fillStyle = C.env;
-  ctx.fillRect(-50, -4, 100, 3);
-  // Light bar
-  ctx.fillStyle = C.env;
-  ctx.fillRect(-14, -36, 10, 5);
-  ctx.fillStyle = C.pink;
-  ctx.fillRect(4, -36, 10, 5);
-  // Text
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 7px Courier New';
-  ctx.textAlign = 'center';
-  ctx.fillText('POLICE', 0, 6);
-  ctx.restore();
+function drawStain(x,y,r=18){
+  ctx.save(); ctx.globalAlpha=0.4;
+  const g=ctx.createRadialGradient(x,y,0,x,y,r);
+  g.addColorStop(0,'rgba(255,255,255,0.6)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(x,y,r,r*0.55,0,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=1; ctx.restore();
 }
 
-// Stain
-function drawStain(x, y, r=18) {
-  ctx.save();
-  ctx.globalAlpha = 0.75;
-  const g = ctx.createRadialGradient(x,y,0,x,y,r);
-  g.addColorStop(0, '#cc1100');
-  g.addColorStop(1, '#33000000');
-  ctx.fillStyle = g;
-  ctx.beginPath(); ctx.ellipse(x, y, r, r*0.6, 0, 0, Math.PI*2);
-  ctx.fill();
-  ctx.globalAlpha = 1;
-  ctx.restore();
+function drawCone(x,y){
+  ctx.fillStyle='rgba(255,255,255,0.25)';
+  ctx.beginPath(); ctx.moveTo(x,y-20); ctx.lineTo(x-8,y); ctx.lineTo(x+8,y); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(x-8,y-12,16,3);
 }
 
-// Cone / barrier
-function drawCone(x, y) {
-  ctx.fillStyle = '#ff8800';
-  ctx.beginPath(); ctx.moveTo(x, y-20); ctx.lineTo(x-8, y); ctx.lineTo(x+8, y); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(x-8, y-12, 16, 3);
+function drawTape(x1,y1,x2,y2){
+  ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=2; ctx.setLineDash([12,8]);
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); ctx.setLineDash([]);
 }
 
-// Crime tape
-function drawTape(x1,y1,x2,y2) {
-  ctx.strokeStyle = '#ffcc00';
-  ctx.lineWidth = 3;
-  ctx.setLineDash([12,8]);
-  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-  ctx.setLineDash([]);
-}
-
-// Tire tracks
-function drawTireTracks(x, y, len=180) {
-  ctx.strokeStyle = '#ffffff18';
-  ctx.lineWidth = 6;
-  ctx.setLineDash([20,15]);
+function drawTireTracks(x,y,len=180){
+  ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=6; ctx.setLineDash([20,15]);
   ctx.beginPath(); ctx.moveTo(x-14,y); ctx.lineTo(x-14,y+len); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(x+14,y); ctx.lineTo(x+14,y+len); ctx.stroke();
   ctx.setLineDash([]);
 }
 
-// CCTV camera
-function drawCCTV(x, y) {
-  ctx.fillStyle = C.env;
-  ctx.fillRect(x-3, y-30, 4, 30);
-  ctx.fillStyle = C.envGlow;
-  ctx.fillRect(x-10, y-40, 20, 10);
-  ctx.beginPath(); ctx.arc(x+12, y-35, 5, 0, Math.PI*2);
-  ctx.fillStyle = C.pink; ctx.fill();
+function drawCCTV(x,y){
+  ctx.fillStyle='rgba(255,255,255,0.15)';
+  ctx.fillRect(x-3,y-30,3,30); ctx.fillRect(x-10,y-40,20,10);
+  ctx.beginPath(); ctx.arc(x+12,y-35,5,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.fill();
 }
 
-// Building / storefront
-function drawBuilding(x, y, w, h, label='') {
-  // Body
-  ctx.fillStyle = C.greyMid;
-  ctx.fillRect(x, y, w, h);
-  // Outline
-  ctx.strokeStyle = C.env;
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(x, y, w, h);
-  // Windows
-  ctx.fillStyle = '#00aaff18';
-  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
-    if ((r+c)%2===0) ctx.fillRect(x+10+c*((w-20)/3), y+16+r*24, (w-20)/3-4, 18);
-  }
-  // Sign
-  if (label) {
-    ctx.fillStyle = C.pink;
-    ctx.fillRect(x+8, y+h-30, w-16, 22);
-    ctx.fillStyle = '#fff';
-    ctx.font = `bold ${Math.min(10,w/10)}px Courier New`;
-    ctx.textAlign = 'center';
-    ctx.fillText(label, x+w/2, y+h-14);
+function drawBuilding(x,y,w,h,label=''){
+  ctx.fillStyle='rgba(255,255,255,0.04)'; ctx.fillRect(x,y,w,h);
+  ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1; ctx.strokeRect(x,y,w,h);
+  ctx.fillStyle='rgba(255,255,255,0.03)';
+  for(let r=0;r<4;r++) for(let c=0;c<3;c++)
+    if((r+c)%2===0) ctx.fillRect(x+10+c*((w-20)/3),y+16+r*24,(w-20)/3-4,16);
+  if(label){
+    ctx.fillStyle='rgba(255,255,255,0.08)'; ctx.fillRect(x+8,y+h-28,w-16,20);
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.font=`200 ${Math.min(9,w/10)}px Montserrat`; ctx.textAlign='center';
+    ctx.fillText(label,x+w/2,y+h-14);
   }
 }
 
-// Street lamp
-function drawLamp(x, y) {
-  ctx.strokeStyle = C.envDim;
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y-70); ctx.lineTo(x+20, y-70); ctx.stroke();
-  ctx.fillStyle = '#ffff8844';
-  ctx.beginPath(); ctx.arc(x+20, y-64, 8, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#ffff88';
-  ctx.beginPath(); ctx.arc(x+20, y-64, 3, 0, Math.PI*2); ctx.fill();
-  // Light cone
-  ctx.save();
-  ctx.globalAlpha = 0.07;
-  const g = ctx.createRadialGradient(x+20,y-64,0,x+20,y-64,90);
-  g.addColorStop(0,'#ffff88'); g.addColorStop(1,'transparent');
-  ctx.fillStyle = g;
-  ctx.beginPath(); ctx.arc(x+20,y-64,90,0,Math.PI*2); ctx.fill();
-  ctx.globalAlpha = 1; ctx.restore();
+function drawLamp(x,y){
+  ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x,y-70); ctx.lineTo(x+20,y-70); ctx.stroke();
+  ctx.save(); ctx.globalAlpha=0.06;
+  const g=ctx.createRadialGradient(x+20,y-64,0,x+20,y-64,70);
+  g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(1,'transparent');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x+20,y-64,70,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha=1; ctx.restore();
+  ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.beginPath(); ctx.arc(x+20,y-64,3,0,Math.PI*2); ctx.fill();
 }
 
-// ID card
-function drawIDCard(x, y) {
-  ctx.fillStyle = '#111122';
-  ctx.strokeStyle = C.pink;
-  ctx.lineWidth = 1.5;
-  ctx.fillRect(x, y, 90, 60);
-  ctx.strokeRect(x, y, 90, 60);
-  ctx.fillStyle = C.pink;
-  ctx.font = 'bold 7px Courier New';
-  ctx.textAlign = 'left';
-  ctx.fillText('NATIONAL ID', x+6, y+14);
-  ctx.fillStyle = '#fff';
-  ctx.font = '6px Courier New';
-  ctx.fillText('Name: ████████', x+6, y+28);
-  ctx.fillText('Address: Magura', x+6, y+40);
-  ctx.fillText('DOB: ██/██/████', x+6, y+52);
+function drawIDCard(x,y){
+  ctx.fillStyle='rgba(255,255,255,0.05)'; ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1;
+  ctx.fillRect(x,y,90,60); ctx.strokeRect(x,y,90,60);
+  ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='200 7px Montserrat'; ctx.textAlign='left';
+  ctx.fillText('NATIONAL ID',x+6,y+14);
+  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='200 6px Montserrat';
+  ['Name: ████████','Address: Magura','DOB: ██/██/████'].forEach((l,i)=>ctx.fillText(l,x+6,y+28+i*12));
 }
 
-// Cake box
-function drawCake(x, y, scale=1) {
-  ctx.save();
-  ctx.translate(x,y); ctx.scale(scale,scale);
-  // Box
-  ctx.fillStyle = '#fff8ee';
-  ctx.strokeStyle = C.pink;
-  ctx.lineWidth = 2;
-  ctx.fillRect(-22,-15,44,30);
-  ctx.strokeRect(-22,-15,44,30);
-  // Ribbon
-  ctx.strokeStyle = C.pink;
-  ctx.lineWidth = 1.5;
+function drawCake(x,y,scale=1){
+  ctx.save(); ctx.translate(x,y); ctx.scale(scale,scale);
+  ctx.fillStyle='rgba(255,255,255,0.08)'; ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=1.5;
+  ctx.fillRect(-22,-15,44,30); ctx.strokeRect(-22,-15,44,30);
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1;
   ctx.beginPath(); ctx.moveTo(0,-15); ctx.lineTo(0,15); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(-22,-2); ctx.lineTo(22,-2); ctx.stroke();
-  // Bow
-  ctx.fillStyle = C.pink;
+  ctx.fillStyle='rgba(255,255,255,0.35)';
   ctx.beginPath(); ctx.arc(-6,-15,5,0,Math.PI*2); ctx.fill();
   ctx.beginPath(); ctx.arc(6,-15,5,0,Math.PI*2); ctx.fill();
   ctx.restore();
 }
 
-// ─── SCENES ───────────────────────────────────────────────────────────────────
-function drawSceneHighway() {
+/* ─── SCENES ───────────────────────────────────────────────── */
+function drawSceneHighway(){
   drawSky(false);
-  // Horizon glow
-  const hg = ctx.createLinearGradient(0, H*0.3, 0, H*0.45);
-  hg.addColorStop(0, '#00000000'); hg.addColorStop(1, '#00aaff11');
-  ctx.fillStyle = hg; ctx.fillRect(0, H*0.3, W, H*0.15);
+  const hg=ctx.createLinearGradient(0,H*0.3,0,H*0.45);
+  hg.addColorStop(0,'rgba(0,0,0,0)'); hg.addColorStop(1,'rgba(255,255,255,0.02)');
+  ctx.fillStyle=hg; ctx.fillRect(0,H*0.3,W,H*0.15);
   drawRoad(true);
-  // Lamps
-  drawLamp(50, H*0.38);
-  drawLamp(W-70, H*0.38);
-  // Distant car
-  drawCar(W/2, H*0.42, 0.45, C.envDim, 'right');
-  // Tape
-  drawTape(80, H*0.62, W-80, H*0.62);
-  // Cones
-  [120, 200, W-140, W-200].forEach(cx => drawCone(cx, H*0.63));
-  // Victim
-  drawHuman(W/2-30, H*0.72, 0.9, C.pink, true);
-  // Stain under palm
-  drawStain(W/2+10, H*0.715, 16);
-  // ID card
-  drawIDCard(W/2+40, H*0.68);
-  // Police cars
-  drawPoliceCar(90, H*0.82, 0.9);
-  drawPoliceCar(W-110, H*0.82, 0.9);
-  // Detectives
-  drawHuman(W/2-80, H*0.79, 0.85, C.env, false, true);
-  drawHuman(W/2+60, H*0.79, 0.85, C.env, false, true);
-  // Tire tracks going off-screen
-  drawTireTracks(W*0.6, H*0.74, 100);
-  // Missing car silhouette (dotted)
-  ctx.save();
-  ctx.globalAlpha = 0.15;
-  ctx.strokeStyle = C.pink;
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([6,4]);
-  ctx.strokeRect(W*0.72, H*0.74, 100, 36);
-  ctx.setLineDash([]);
+  drawLamp(50,H*0.38); drawLamp(W-70,H*0.38);
+  drawCar(W/2,H*0.42,0.45,0.2,'right');
+  drawTape(80,H*0.62,W-80,H*0.62);
+  [120,200,W-140,W-200].forEach(cx=>drawCone(cx,H*0.63));
+  drawHuman(W/2-30,H*0.72,0.9,0.7,true);
+  drawStain(W/2+10,H*0.715,16);
+  drawIDCard(W/2+40,H*0.68);
+  drawPoliceCar(90,H*0.82,0.9); drawPoliceCar(W-110,H*0.82,0.9);
+  drawHuman(W/2-80,H*0.79,0.85,0.6,false,true); drawHuman(W/2+60,H*0.79,0.85,0.6,false,true);
+  drawTireTracks(W*0.6,H*0.74,100);
+  ctx.save(); ctx.globalAlpha=0.1; ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=1;
+  ctx.setLineDash([6,4]); ctx.strokeRect(W*0.72,H*0.74,100,36); ctx.setLineDash([]);
   ctx.restore();
-  // Missing car label
-  ctx.fillStyle = C.pink;
-  ctx.font = '8px Courier New';
-  ctx.textAlign = 'center';
-  ctx.fillText('MISSING VEHICLE', W*0.77+50, H*0.73);
+  ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.font='200 7px Montserrat'; ctx.textAlign='center';
+  ctx.fillText('MISSING VEHICLE',W*0.77+50,H*0.73);
 }
 
-function drawSceneHighway2() {
+function drawSceneHighway2(){
   drawSceneHighway();
-  // Night label
-  ctx.fillStyle = C.env;
-  ctx.font = '9px Courier New';
-  ctx.textAlign = 'left';
-  ctx.fillText('00:17', 16, H*0.42);
+  ctx.fillStyle='rgba(255,255,255,0.2)'; ctx.font='200 8px Montserrat'; ctx.textAlign='left';
+  ctx.fillText('00:17',16,H*0.42);
 }
 
-function drawSceneTireTrack() {
-  drawSky(true);
-  drawRoad(true);
-  drawLamp(30, H*0.38);
-  drawLamp(W-50, H*0.38);
-  // Tire tracks
-  drawTireTracks(W/2, H*0.42, 350);
-  // Police car following
-  drawPoliceCar(W/2-20, H*0.82, 1.0);
-  // Detectives in car
-  ctx.fillStyle = C.env;
-  ctx.font = '7px Courier New';
-  ctx.textAlign = 'center';
-  // Arrow
-  ctx.fillStyle = C.envGlow;
-  ctx.font = 'bold 18px Courier New';
-  ctx.fillText('↑', W/2, H*0.5);
-  ctx.fillStyle = C.env;
-  ctx.font = '8px Courier New';
-  ctx.fillText('TIRE TRACKS', W/2, H*0.53);
-  // Direction sign
-  ctx.fillStyle = C.envDim;
-  ctx.fillRect(W*0.65, H*0.42, 90, 26);
-  ctx.strokeStyle = C.env;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(W*0.65, H*0.42, 90, 26);
-  ctx.fillStyle = '#fff';
-  ctx.font = '8px Courier New';
-  ctx.textAlign = 'center';
-  ctx.fillText('→ CITY 14km', W*0.65+45, H*0.42+17);
-  // Post
-  ctx.strokeStyle = C.envDim;
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(W*0.65+5, H*0.42+26); ctx.lineTo(W*0.65+5, H*0.42+60); ctx.stroke();
+function drawSceneTireTrack(){
+  drawSky(true); drawRoad(true);
+  drawLamp(30,H*0.38); drawLamp(W-50,H*0.38);
+  drawTireTracks(W/2,H*0.42,350);
+  drawPoliceCar(W/2-20,H*0.82,1.0);
+  ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.font='bold 18px Montserrat'; ctx.textAlign='center';
+  ctx.fillText('↑',W/2,H*0.5);
+  ctx.fillStyle='rgba(255,255,255,0.2)'; ctx.font='200 8px Montserrat';
+  ctx.fillText('TIRE TRACKS',W/2,H*0.53);
+  ctx.fillStyle='rgba(255,255,255,0.04)'; ctx.fillRect(W*0.65,H*0.42,90,26);
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1; ctx.strokeRect(W*0.65,H*0.42,90,26);
+  ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.font='200 7px Montserrat'; ctx.textAlign='center';
+  ctx.fillText('→ CITY 14km',W*0.65+45,H*0.42+17);
 }
 
-function drawSceneBakery() {
+function drawSceneBakery(){
   drawSky(true);
-  // Sidewalk
-  ctx.fillStyle = '#0a0a18';
-  ctx.fillRect(0, H*0.42, W, H*0.58);
-  ctx.strokeStyle = C.envDim;
-  ctx.lineWidth = 1;
-  // Pavement tiles
-  for (let i = 0; i < 8; i++) {
-    ctx.beginPath(); ctx.moveTo(0, H*0.42+i*30); ctx.lineTo(W, H*0.42+i*30); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(i*70, H*0.42); ctx.lineTo(i*70, H); ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.02)'; ctx.fillRect(0,H*0.42,W,H*0.58);
+  ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=1;
+  for(let i=0;i<8;i++){
+    ctx.beginPath(); ctx.moveTo(0,H*0.42+i*30); ctx.lineTo(W,H*0.42+i*30); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(i*70,H*0.42); ctx.lineTo(i*70,H); ctx.stroke();
   }
-  // Buildings
-  drawBuilding(10, H*0.1, 130, H*0.35, '');
-  drawBuilding(160, H*0.05, 160, H*0.40, 'PASTRY\nPALACE');
-  drawBuilding(330, H*0.1, 140, H*0.35, '');
-  // Bakery sign glow
-  ctx.save();
-  ctx.globalAlpha = 0.12;
-  const bg2 = ctx.createRadialGradient(240, H*0.35, 0, 240, H*0.35, 120);
-  bg2.addColorStop(0, C.pink); bg2.addColorStop(1, 'transparent');
-  ctx.fillStyle = bg2; ctx.fillRect(0,0,W,H*0.5);
-  ctx.globalAlpha = 1; ctx.restore();
-  // Lamp
-  drawLamp(80, H*0.42);
-  drawLamp(W-80, H*0.42);
-  // CCTV on bakery
-  drawCCTV(330, H*0.42);
-  // Suspect with cake
-  drawHuman(260, H*0.68, 0.95, C.pink);
-  drawCake(286, H*0.63, 0.9);
-  // Police
-  drawHuman(80, H*0.72, 0.9, C.env, false, true);
-  drawHuman(130, H*0.72, 0.9, C.env, false, true);
-  // Police car
-  drawPoliceCar(W-90, H*0.84, 0.82);
+  drawBuilding(10,H*0.1,130,H*0.35,'');
+  drawBuilding(160,H*0.05,160,H*0.40,'PASTRY PALACE');
+  drawBuilding(330,H*0.1,140,H*0.35,'');
+  ctx.save(); ctx.globalAlpha=0.04;
+  const bg2=ctx.createRadialGradient(240,H*0.35,0,240,H*0.35,120);
+  bg2.addColorStop(0,'rgba(255,255,255,1)'); bg2.addColorStop(1,'transparent');
+  ctx.fillStyle=bg2; ctx.fillRect(0,0,W,H*0.5);
+  ctx.globalAlpha=1; ctx.restore();
+  drawLamp(80,H*0.42); drawLamp(W-80,H*0.42);
+  drawCCTV(330,H*0.42);
+  drawHuman(260,H*0.68,0.95,0.7);
+  drawCake(286,H*0.63,0.9);
+  drawHuman(80,H*0.72,0.9,0.5,false,true); drawHuman(130,H*0.72,0.9,0.5,false,true);
+  drawPoliceCar(W-90,H*0.84,0.82);
 }
 
-function drawSceneBakery2() {
+function drawSceneBakery2(){
   drawSceneBakery();
-  // Second victim on ground
-  drawHuman(180, H*0.75, 0.85, C.pink, true);
-  drawStain(200, H*0.748, 14);
-  // Crime tape
-  drawTape(130, H*0.68, 280, H*0.68);
-  // Second missing car outline
-  ctx.save();
-  ctx.globalAlpha = 0.18;
-  ctx.strokeStyle = C.pink;
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([6,4]);
-  ctx.strokeRect(30, H*0.78, 95, 34);
-  ctx.setLineDash([]);
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = C.pink;
-  ctx.font = '7px Courier New';
-  ctx.textAlign = 'center';
-  ctx.fillText('MISSING', 77, H*0.77);
-  ctx.restore();
-  // Tire tracks
-  drawTireTracks(140, H*0.68, 120);
-  // Evidence items
-  // Cake receipt
-  ctx.fillStyle = '#fff8ee';
-  ctx.strokeStyle = C.pink;
-  ctx.lineWidth = 1;
-  ctx.fillRect(W-80, H*0.66, 50, 70);
-  ctx.strokeRect(W-80, H*0.66, 50, 70);
-  ctx.fillStyle = '#333';
-  ctx.font = '5.5px Courier New';
-  ctx.textAlign = 'left';
-  ['RECEIPT', '─────────','CAKE x1','CANDLE x6','─────────','TOTAL: ৳850','11:38 PM'].forEach((l,i)=>{
-    ctx.fillText(l, W-76, H*0.66+10+i*9);
-  });
+  drawHuman(180,H*0.75,0.85,0.6,true); drawStain(200,H*0.748,14);
+  drawTape(130,H*0.68,280,H*0.68);
+  ctx.save(); ctx.globalAlpha=0.15; ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=1;
+  ctx.setLineDash([6,4]); ctx.strokeRect(30,H*0.78,95,34); ctx.setLineDash([]);
+  ctx.globalAlpha=1;
+  ctx.fillStyle='rgba(255,255,255,0.2)'; ctx.font='200 7px Montserrat'; ctx.textAlign='center';
+  ctx.fillText('MISSING',77,H*0.77); ctx.restore();
+  drawTireTracks(140,H*0.68,120);
+  // Receipt
+  ctx.fillStyle='rgba(255,255,255,0.06)'; ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1;
+  ctx.fillRect(W-80,H*0.66,50,70); ctx.strokeRect(W-80,H*0.66,50,70);
+  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='200 5.5px Montserrat'; ctx.textAlign='left';
+  ['RECEIPT','─────','CAKE x1','CANDLE x6','─────','TOTAL: ৳850','11:38 PM']
+    .forEach((l,i)=>ctx.fillText(l,W-76,H*0.66+10+i*9));
 }
 
-function drawSceneEnd() {
-  drawSky(true);
-  drawRoad(false);
-  // Both crime scenes glimpsed
-  ctx.save();
-  ctx.globalAlpha = 0.3;
-  drawHuman(120, H*0.6, 0.7, C.pink, true);
-  drawStain(135, H*0.598, 10);
-  drawHuman(W-120, H*0.6, 0.7, C.pink, true);
-  drawStain(W-105, H*0.598, 10);
-  ctx.globalAlpha = 1;
-  ctx.restore();
-  // Detective alone center
-  drawHuman(W/2, H*0.7, 1.0, C.env, false, true);
-  // Question marks
-  ctx.fillStyle = C.pink;
-  ctx.font = 'bold 28px Courier New';
-  ctx.textAlign = 'center';
-  ctx.globalAlpha = 0.3;
-  ctx.fillText('?', W/2-60, H*0.58);
-  ctx.fillText('?', W/2+60, H*0.58);
-  ctx.fillText('?', W/2, H*0.52);
-  ctx.globalAlpha = 1;
+function drawSceneEnd(){
+  drawSky(true); drawRoad(false);
+  ctx.save(); ctx.globalAlpha=0.25;
+  drawHuman(120,H*0.6,0.7,1,true); drawStain(135,H*0.598,10);
+  drawHuman(W-120,H*0.6,0.7,1,true); drawStain(W-105,H*0.598,10);
+  ctx.globalAlpha=1; ctx.restore();
+  drawHuman(W/2,H*0.7,1.0,0.6,false,true);
+  ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.font='bold 28px Montserrat'; ctx.textAlign='center';
+  ['?','?','?'].forEach((q,i)=>{
+    const positions=[[W/2-60,H*0.58],[W/2+60,H*0.58],[W/2,H*0.52]];
+    ctx.fillText(q,positions[i][0],positions[i][1]);
+  });
 }
 
 const SCENES = {
-  highway:   drawSceneHighway,
-  highway2:  drawSceneHighway2,
-  tiretrack: drawSceneTireTrack,
-  bakery:    drawSceneBakery,
-  bakery2:   drawSceneBakery2,
-  end:       drawSceneEnd,
+  highway:drawSceneHighway, highway2:drawSceneHighway2,
+  tiretrack:drawSceneTireTrack, bakery:drawSceneBakery,
+  bakery2:drawSceneBakery2, end:drawSceneEnd,
 };
 
-function renderScene(name) {
+function renderScene(name){
   ctx.clearRect(0,0,W,H);
-  (SCENES[name] || SCENES['highway'])();
-  const labels = {
-    highway:'HIGHWAY — MIDNIGHT', highway2:'HIGHWAY — MIDNIGHT',
-    tiretrack:'EN ROUTE — FOLLOWING TRACKS',
-    bakery:'PASTRY PALACE — CITY', bakery2:'PASTRY PALACE — CRIME SCENE',
+  (SCENES[name]||SCENES['highway'])();
+  const labels={
+    highway:'Highway — Midnight', highway2:'Highway — Midnight',
+    tiretrack:'En Route — Following Tracks',
+    bakery:'Pastry Palace — City', bakery2:'Pastry Palace — Crime Scene',
     end:'—'
   };
-  sceneLabel.textContent = labels[name] || '';
+  sceneLabel.textContent = labels[name]||'';
 }
 
-// ─── STORY ────────────────────────────────────────────────────────────────────
-// Dialogue script: {speaker, text, scene?, next}
-// Choices: {prompt, choices:[{label,next}]}
-// scene: changes scene before showing dialogue
+/* ─── SCRIPT ───────────────────────────────────────────────── */
+const SCRIPT=[
+  {speaker:'',text:'Midnight.',scene:'highway',next:1},
+  {speaker:'',text:'A body is found on the outskirts of the city.',next:2},
+  {speaker:'DISPATCH',text:'Highway 7, kilometer 34. Unidentified victim. No vehicle at the scene.',next:3},
+  {speaker:'DETECTIVE KARIM',text:'We\'re on our way.',next:4},
 
-const SCRIPT = [
-  // 0 — intro narration
-  { speaker:'', text:'Midnight.', scene:'highway', next:1 },
-  { speaker:'', text:'A call reaches the police.', next:2 },
-  { speaker:'', text:'A dead body has been discovered on the outskirts of the city.', next:3 },
-  { speaker:'DISPATCH', text:'All units — Highway 7, kilometer 34. Unidentified body. No vehicle in sight.', next:4 },
-  { speaker:'DETECTIVE KARIM', text:'Karim here. On our way.', next:5 },
-  // 5 — arrive scene
-  { speaker:'', text:'Police arrive at the highway crime scene.', scene:'highway2', next:6 },
-  { speaker:'OFFICER RAFI', text:'No ID on the victim — wait. There\'s a card beneath the body.', next:7 },
-  { speaker:'DETECTIVE KARIM', text:'What does it say?', next:8 },
-  { speaker:'OFFICER RAFI', text:'National ID card. Address listed as... Magura.', next:9 },
-  { speaker:'DETECTIVE KARIM', text:'Magura. That\'s over a hundred kilometers from here. How did he get here?', next:10 },
-  { speaker:'OFFICER RAFI', text:'No bus stops nearby. No rickshaw either. And look — there\'s a reddish stain beneath his palm.', next:11 },
-  { speaker:'DETECTIVE KARIM', text:'Not blood from an external wound. More like... something was in his hand.', next:12 },
-  { speaker:'OFFICER RAFI', text:'The tire tracks, sir. They lead away — toward the city. Whoever was here, left in a hurry.', next:13 },
-  { speaker:'DETECTIVE KARIM', text:'A vehicle was here. And now it\'s gone.', next:14 },
-  // 14 — theory choice
-  { type:'choice', prompt:'What do you make of this?', scene:'highway2', choices:[
-    { label:'Could be a serial killer. Drop and run.', next:15 },
-    { label:'Maybe the vehicle was stolen — victim included.', next:17 },
-    { label:'Someone is hiding evidence. The car is the key.', next:19 },
+  {speaker:'',text:'Police arrive at the scene.',scene:'highway2',next:5},
+  {speaker:'OFFICER RAFI',text:'Found an ID card under the body. Address: Magura.',next:6},
+  {speaker:'DETECTIVE KARIM',text:'Over a hundred kilometers away. How did he get here?',next:7},
+  {speaker:'OFFICER RAFI',text:'There\'s a reddish stain beneath his palm.',next:8},
+  {speaker:'DETECTIVE KARIM',text:'Could be from gripping something for a long time. Maybe a steering wheel.',next:9},
+  {speaker:'OFFICER RAFI',text:'Tire tracks head toward the city.',next:10},
+  {speaker:'DETECTIVE KARIM',text:'Then that\'s our lead.',next:11},
+
+  {type:'choice',prompt:'What do you make of this?',scene:'highway2',choices:[
+    {label:'Serial killer.',next:12},
+    {label:'Killed for the vehicle.',next:14},
   ]},
-  // THEORY A — serial killer
-  { speaker:'DETECTIVE KARIM', text:'Serial killer profile. Picks victims from rural areas, relocates the body. We\'ve seen this before.', next:21 },
-  { speaker:'OFFICER RAFI', text:'If that\'s true, there could be more victims. We need to follow those tracks.', next:21 },
-  // THEORY B — vehicle thief
-  { speaker:'DETECTIVE KARIM', text:'The victim may have been in the wrong place. A car thief who panicked.', next:21 },
-  { speaker:'OFFICER RAFI', text:'Opportunistic crime? Still... the tracks go somewhere. Let\'s follow.', next:21 },
-  // THEORY C — hidden evidence
-  { speaker:'DETECTIVE KARIM', text:'Someone staged this. The car, the body, the ID. All placed deliberately.', next:21 },
-  { speaker:'OFFICER RAFI', text:'Then we\'re dealing with someone calculated. The tire tracks — they\'re our only lead.', next:21 },
-  // 21 — follow tracks
-  { speaker:'', text:'The team follows the tire tracks toward the city.', scene:'tiretrack', next:22 },
-  { speaker:'OFFICER RAFI', text:'The tracks don\'t stop. They lead straight into the city center.', next:23 },
-  { speaker:'DETECTIVE KARIM', text:'Stay sharp. Whoever did this didn\'t go far.', next:24 },
-  { speaker:'', text:'Forty minutes later — a bakery in the city district.', scene:'bakery', next:25 },
-  // 25 — bakery intro
-  { speaker:'OFFICER RAFI', text:'PASTRY PALACE. Closed at this hour. But... there\'s a light inside.', next:26 },
-  { speaker:'DETECTIVE KARIM', text:'And someone just walked out carrying something.', next:27 },
-  { speaker:'', text:'A man exits the bakery carrying a birthday cake.', next:28 },
-  { speaker:'DETECTIVE KARIM', text:'Stop. Police. Where are you going with that?', next:29 },
-  { speaker:'SUSPECT', text:'I— I just picked up a birthday cake. It\'s for my nephew. Tomorrow\'s his birthday, I swear—', next:30 },
-  { speaker:'DETECTIVE KARIM', text:'At midnight.', next:31 },
-  { speaker:'SUSPECT', text:'I had the receipt! They stay open late for orders— I can show you—', next:32 },
-  // 32 — investigate bakery
-  { speaker:'', text:'The detectives enter the bakery. What they find stops them cold.', scene:'bakery2', next:33 },
-  { speaker:'OFFICER RAFI', text:'Sir... there\'s another body. On the floor. Behind the counter.', next:34 },
-  { speaker:'DETECTIVE KARIM', text:'Another reddish stain beneath the palm.', next:35 },
-  { speaker:'OFFICER RAFI', text:'Same as the highway victim.', next:36 },
-  { speaker:'DETECTIVE KARIM', text:'Second missing vehicle. More tire tracks. CCTV camera on the wall — is it recording?', next:37 },
-  { speaker:'OFFICER RAFI', text:'Yes — and it\'s intact. Someone wanted us to find this.', next:38 },
-  { speaker:'DETECTIVE KARIM', text:'Or they didn\'t know it was there.', next:39 },
-  { speaker:'OFFICER RAFI', text:'There\'s a cake receipt on the floor. Printed at 11:38 PM. Our suspect\'s story checks out — so far.', next:40 },
-  { speaker:'DETECTIVE KARIM', text:'Witness statements. Talk to everyone in the block. And pull the vehicle records for anything parked here tonight.', next:41 },
-  { speaker:'OFFICER RAFI', text:'Sir — this isn\'t a single incident anymore. Two bodies. Two missing vehicles. The same mark on both victims.', next:42 },
-  // 42 — second choice
-  { type:'choice', prompt:'What is your next move?', scene:'bakery2', choices:[
-    { label:'Secure the suspect. He knows something.', next:43 },
-    { label:'The CCTV footage is the priority. Review it now.', next:45 },
-    { label:'The tire tracks. Where do they lead from here?', next:47 },
+
+  {speaker:'OFFICER RAFI',text:'Then there could be more victims.',next:16},
+  {speaker:'DETECTIVE KARIM',text:'This feels staged.',next:16},
+  {speaker:'OFFICER RAFI',text:'Either way, the tire tracks are all we have.',next:16},
+
+  {speaker:'',text:'The team follows the tracks into the city.',scene:'tiretrack',next:17},
+  {speaker:'',text:'Forty minutes later — a bakery.',scene:'bakery',next:18},
+  {speaker:'OFFICER RAFI',text:'Closed, but the lights are on.',next:19},
+  {speaker:'DETECTIVE KARIM',text:'Someone just came out carrying a cake.',next:20},
+  {speaker:'DETECTIVE KARIM',text:'Police. Stop.',next:21},
+  {speaker:'SUSPECT',text:'Birthday cake for my nephew. I have a receipt.',next:22},
+
+  {speaker:'',text:'Inside the bakery, another body is discovered.',scene:'bakery2',next:23},
+  {speaker:'OFFICER RAFI',text:'Same markings as the highway victim.',next:24},
+  {speaker:'DETECTIVE KARIM',text:'Second victim. Another missing vehicle.',next:25},
+  {speaker:'OFFICER RAFI',text:'The receipt checks out. The suspect may be innocent.',next:26},
+  {speaker:'OFFICER RAFI',text:'Two victims. Two missing vehicles. Same signature.',next:27},
+
+  {type:'choice',prompt:'What is your next move?',scene:'bakery2',choices:[
+    {label:'Hold the suspect.',next:28},
+    {label:'Follow the tracks.',next:30},
   ]},
-  // A
-  { speaker:'DETECTIVE KARIM', text:'Detain him. Politely. He\'s not under arrest — but he\'s not leaving.', next:49 },
-  { speaker:'OFFICER RAFI', text:'Understood. I\'ll secure him outside.', next:49 },
-  // B
-  { speaker:'DETECTIVE KARIM', text:'Pull the footage. I want to see every vehicle that passed this bakery tonight.', next:49 },
-  { speaker:'OFFICER RAFI', text:'I\'m on it. The recorder\'s in the back office.', next:49 },
-  // C
-  { speaker:'DETECTIVE KARIM', text:'Two separate crime scenes connected by tire tracks. Someone is running a circuit.', next:49 },
-  { speaker:'OFFICER RAFI', text:'I\'ll get forensics to map the routes. We might find a third location.', next:49 },
-  // 49 — closing
-  { speaker:'', text:'Detective Karim stands alone for a moment.', scene:'end', next:50 },
-  { speaker:'DETECTIVE KARIM', text:'Two victims. Two missing cars. Same signature. This isn\'t over.', next:51 },
-  { speaker:'DETECTIVE KARIM', text:'Someone is moving through this city — and they\'re not done.', next:52 },
-  { speaker:'', text:'This case is far larger than anyone imagined.', next:53 },
-  { speaker:'', text:'And the night is still young.', next:54 },
-  // 54 — end
-  { type:'end' },
+
+  {speaker:'DETECTIVE KARIM',text:'Keep him here for questioning.',next:32},
+  {speaker:'OFFICER RAFI',text:'Understood.',next:32},
+
+  {speaker:'DETECTIVE KARIM',text:'Someone is moving between crime scenes.',next:32},
+  {speaker:'OFFICER RAFI',text:'We may have a third location.',next:32},
+
+  {speaker:'',text:'Later that night.',scene:'end',next:33},
+  {speaker:'DETECTIVE KARIM',text:'Two victims. Two missing vehicles. This isn\'t over.',next:34},
+  {speaker:'OFFICER RAFI',text:'Sir, we found a vehicle near the forest.',next:35},
+  {speaker:'OFFICER RAFI',text:'Only the driver\'s fingerprints were inside.',next:36},
+
+  {type:'end'},
 ];
 
-// ─── GAME LOOP ─────────────────────────────────────────────────────────────────
-let currentSceneName = 'highway';
-let animFrame;
+/* ─── GAME LOOP ────────────────────────────────────────────── */
+let currentSceneName='highway', animFrame;
+function render(){ renderScene(currentSceneName); animFrame=requestAnimationFrame(render); }
 
-function render() {
-  renderScene(currentSceneName);
-  animFrame = requestAnimationFrame(render);
+function processNode(index){
+  if(index===null||index===undefined||index>=SCRIPT.length) return showEnd();
+  state.dialogueIndex=index; saveGame();
+  const node=SCRIPT[index]; if(!node) return showEnd();
+  if(node.type==='end') return showEnd();
+  if(node.scene&&node.scene!==currentSceneName){
+    crossFade(()=>{
+      currentSceneName=node.scene; state.scene=node.scene;
+      if(node.type==='choice') showChoices(node.prompt,node.choices,(i,ch)=>{ if(i===0)state.theory=ch.label; processNode(ch.next); });
+      else showDialogue(node.speaker,node.text,()=>processNode(node.next));
+    }); return;
+  }
+  if(node.type==='choice') showChoices(node.prompt,node.choices,(i,ch)=>{ if(i===0&&!state.theory)state.theory=ch.label; processNode(ch.next); });
+  else showDialogue(node.speaker,node.text,()=>processNode(node.next));
 }
 
-function processNode(index) {
-  if (index === null || index === undefined || index >= SCRIPT.length) return showEnd();
-  state.dialogueIndex = index;
-  saveGame();
-
-  const node = SCRIPT[index];
-  if (!node) return showEnd();
-
-  if (node.type === 'end') return showEnd();
-
-  if (node.scene && node.scene !== currentSceneName) {
-    crossFade(() => {
-      currentSceneName = node.scene;
-      state.scene = node.scene;
-      if (node.type === 'choice') {
-        showChoices(node.prompt, node.choices, (i, ch) => {
-          if (i === 0) state.theory = ch.label;
-          processNode(ch.next);
-        });
-      } else {
-        showDialogue(node.speaker, node.text, () => processNode(node.next));
-      }
-    });
-    return;
-  }
-
-  if (node.type === 'choice') {
-    showChoices(node.prompt, node.choices, (i, ch) => {
-      if (i === 0 && !state.theory) state.theory = ch.label;
-      processNode(ch.next);
-    });
-  } else {
-    showDialogue(node.speaker, node.text, () => processNode(node.next));
-  }
-}
-
-function showEnd() {
-  hideDialogue();
-  cancelAnimationFrame(animFrame);
-  ctx.clearRect(0,0,W,H);
-  ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
-  const endScreen = document.getElementById('endScreen');
-  endScreen.style.display = 'flex';
-  setTimeout(() => {
-    document.getElementById('endText').style.opacity = '1';
-    setTimeout(() => { document.getElementById('endSub').style.opacity = '1'; }, 600);
-  }, 400);
+function showEnd(){
+  hideDialogue(); cancelAnimationFrame(animFrame);
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+  const endScreen=document.getElementById('endScreen');
+  endScreen.style.display='flex';
+  setTimeout(()=>{
+    document.getElementById('endText').style.opacity='1';
+    document.getElementById('endDivider').classList.add('open');
+    setTimeout(()=>{ document.getElementById('endSub').style.opacity='1'; },600);
+  },400);
   localStorage.removeItem('tbr_save');
 }
 
-// ─── MENU ─────────────────────────────────────────────────────────────────────
-const menuBtn = document.getElementById('menuBtn');
-menuBtn.addEventListener('click', (e) => {
+/* ─── MENU ─────────────────────────────────────────────────── */
+document.getElementById('menuBtn').addEventListener('click', e=>{
   e.stopPropagation();
-  const menu = document.createElement('div');
-  menu.style.cssText = `position:absolute;top:28px;right:12px;background:#000;border:1px solid #00aaff;
-    padding:10px;z-index:50;font-family:'Courier New',monospace;font-size:11px;color:#fff;min-width:120px;`;
-  ['Resume', 'Restart', 'Close'].forEach(label => {
-    const item = document.createElement('div');
-    item.textContent = label;
-    item.style.cssText = 'padding:6px 10px;cursor:pointer;letter-spacing:2px;';
-    item.onmouseenter = () => item.style.color = C.pink;
-    item.onmouseleave = () => item.style.color = '#fff';
-    item.onclick = () => {
+  const menu=document.createElement('div');
+  menu.style.cssText=`position:absolute;top:28px;right:14px;background:#000;
+    border:1px solid rgba(255,255,255,0.15);padding:10px;z-index:50;
+    font-family:'Montserrat',sans-serif;font-weight:200;font-size:10px;
+    letter-spacing:0.3em;color:rgba(255,255,255,0.5);min-width:130px;`;
+  ['Resume','Restart','Close'].forEach(label=>{
+    const item=document.createElement('div');
+    item.textContent=label.toUpperCase();
+    item.style.cssText='padding:8px 10px;cursor:pointer;text-transform:uppercase;transition:color 0.2s;';
+    item.onmouseenter=()=>item.style.color='rgba(255,255,255,0.9)';
+    item.onmouseleave=()=>item.style.color='rgba(255,255,255,0.5)';
+    item.onclick=()=>{
       menu.remove();
-      if (label === 'Resume') return;
-      if (label === 'Restart') {
-        localStorage.removeItem('tbr_save');
-        location.reload();
-      }
+      if(label==='Restart'){ localStorage.removeItem('tbr_save'); location.reload(); }
     };
     menu.appendChild(item);
   });
-  document.getElementById('gameContainer').appendChild(menu);
-  document.onclick = () => { menu.remove(); document.onclick = null; };
+  document.getElementById('gameWrap').appendChild(menu);
+  setTimeout(()=>{ document.onclick=()=>{menu.remove();document.onclick=null;}; },0);
 });
 
-// ─── START ────────────────────────────────────────────────────────────────────
-const titleScreen = document.getElementById('titleScreen');
-const saveInfo = document.getElementById('saveInfo');
-const hasSave = localStorage.getItem('tbr_save');
-if (hasSave) saveInfo.textContent = '● SAVED GAME DETECTED — TAP TO CONTINUE';
+/* ─── TITLE SCREEN ANIMATION ───────────────────────────────── */
+const titleScreen=document.getElementById('titleScreen');
+const hasSave=localStorage.getItem('tbr_save');
+if(hasSave) document.getElementById('saveInfo').textContent='Saved game detected — tap to continue';
 
-// Draw title background
-(function drawTitleBg() {
-  ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
-  // stars
-  ctx.fillStyle = '#fff';
-  for (let i = 0; i < 80; i++) {
-    ctx.globalAlpha = 0.1 + (i%7)*0.05;
-    ctx.fillRect((i*137.5)%W, (i*59.3)%H, i%4===0?1.5:0.8, i%4===0?1.5:0.8);
+// Draw title background on the canvas
+(function drawTitleBg(){
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+  for(let i=0;i<80;i++){
+    ctx.globalAlpha=0.05+(i%5)*0.04; ctx.fillStyle='#fff';
+    ctx.fillRect((i*137.5)%W,(i*59.3)%H,i%4===0?1.5:0.7,i%4===0?1.5:0.7);
   }
-  ctx.globalAlpha = 1;
-  // Road
-  ctx.fillStyle = '#06060f'; ctx.fillRect(0, H*0.6, W, H*0.4);
-  const vx=W/2, vy=H*0.6;
-  ctx.strokeStyle='#00aaff44'; ctx.lineWidth=1.5;
+  ctx.globalAlpha=1;
+  ctx.fillStyle='rgba(255,255,255,0.02)'; ctx.fillRect(0,H*0.6,W,H*0.4);
+  const vx=W/2,vy=H*0.6;
+  ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1.5;
   ctx.beginPath(); ctx.moveTo(vx,vy); ctx.lineTo(40,H); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(vx,vy); ctx.lineTo(W-40,H); ctx.stroke();
-  // lone police car
-  drawPoliceCar(W/2, H*0.86, 0.95);
-  // distant body silhouette
-  ctx.globalAlpha = 0.4;
-  drawHuman(W/2-10, H*0.72, 0.7, C.pink, true);
-  ctx.globalAlpha = 1;
+  drawPoliceCar(W/2,H*0.86,0.95);
+  ctx.globalAlpha=0.3; drawHuman(W/2-10,H*0.72,0.7,0.5,true); ctx.globalAlpha=1;
 })();
 
-titleScreen.addEventListener('click', () => {
-  crossFade(() => {
-    titleScreen.style.display = 'none';
+// Stagger title reveal
+setTimeout(()=>document.getElementById('t-eyebrow').classList.add('reveal'),300);
+setTimeout(()=>{ ['tl1','tl2','tl3'].forEach((id,i)=>setTimeout(()=>document.getElementById(id).classList.add('reveal'),i*180)); },600);
+setTimeout(()=>document.getElementById('t-divider').classList.add('reveal'),900);
+setTimeout(()=>document.getElementById('t-sub').classList.add('reveal'),1100);
+setTimeout(()=>document.getElementById('t-start').classList.add('reveal'),1800);
+
+titleScreen.addEventListener('click', ()=>{
+  flashTransition(()=>{
+    titleScreen.style.display='none';
     render();
-    const saved = loadGame();
-    if (saved) {
-      currentSceneName = state.scene || 'highway';
-      processNode(state.dialogueIndex || 0);
-    } else {
-      processNode(0);
-    }
+    const saved=loadGame();
+    if(saved){ currentSceneName=state.scene||'highway'; processNode(state.dialogueIndex||0); }
+    else { processNode(0); }
   });
 });
 
-// End screen tap to restart
-document.getElementById('endScreen').addEventListener('click', () => {
-  localStorage.removeItem('tbr_save');
-  location.reload();
-});
+document.getElementById('endScreen').addEventListener('click',()=>{ localStorage.removeItem('tbr_save'); window.location.href='https://github.com/Muntasir-UwU/Birthday/blob/main/birthdaycake.html'; });
 </script>
 </body>
 </html>

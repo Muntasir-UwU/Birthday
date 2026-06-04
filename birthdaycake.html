@@ -43,10 +43,10 @@
     pointer-events: none;
   }
 
-  /* Dialogue box */
+  /* Dialogue box — moved up 5px (was clamp(12px,4vh,40px), now subtract 5px) */
   #dialogue-box {
     position: absolute;
-    bottom: clamp(12px, 4vh, 40px);
+    bottom: calc(clamp(12px, 4vh, 40px) + 5px);
     left: 50%;
     transform: translateX(-50%);
     width: min(88vw, 520px);
@@ -113,6 +113,13 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    cursor: pointer;
+  }
+
+  /* Subtle hover glow on cake to indicate it's clickable */
+  #cake-wrapper:hover .tier {
+    filter: brightness(1.08);
+    transition: filter 0.2s ease;
   }
 
   #candles-row {
@@ -198,6 +205,7 @@
     border-radius: 6px;
     position: relative;
     overflow: hidden;
+    transition: filter 0.2s ease;
   }
 
   .tier-3 {
@@ -367,8 +375,8 @@
       <div id="cake-plate"></div>
     </div>
     <div id="blow-instruction">
-      <p>Blow into your microphone to extinguish the candles.</p>
-      <div id="mic-status">Waiting for microphone…</div>
+      <p id="blow-text">Click the cake to blow out the candles.</p>
+      <div id="mic-status">🎂 Tap the cake when ready</div>
     </div>
   </div>
 
@@ -398,24 +406,27 @@
   let dialogueIndex = 0;
   let phase = 'intro';
 
-  const bg         = document.getElementById('bg');
-  const dlgBox     = document.getElementById('dialogue-box');
-  const speakerEl  = document.getElementById('speaker-name');
-  const textEl     = document.getElementById('dialogue-text');
-  const tapHint    = document.getElementById('tap-hint');
-  const cakeScene  = document.getElementById('cake-scene');
-  const endScreen  = document.getElementById('end-screen');
-  const endText    = document.getElementById('end-text');
-  const fadeOv     = document.getElementById('fade-overlay');
-  const micStatus  = document.getElementById('mic-status');
-  const candlesRow = document.getElementById('candles-row');
+  const bg          = document.getElementById('bg');
+  const dlgBox      = document.getElementById('dialogue-box');
+  const speakerEl   = document.getElementById('speaker-name');
+  const textEl      = document.getElementById('dialogue-text');
+  const tapHint     = document.getElementById('tap-hint');
+  const cakeScene   = document.getElementById('cake-scene');
+  const cakeWrapper = document.getElementById('cake-wrapper');
+  const endScreen   = document.getElementById('end-screen');
+  const endText     = document.getElementById('end-text');
+  const fadeOv      = document.getElementById('fade-overlay');
+  const micStatus   = document.getElementById('mic-status');
+  const blowText    = document.getElementById('blow-text');
+  const candlesRow  = document.getElementById('candles-row');
 
   const CANDLE_COUNT = 7;
-  let candlesLit = CANDLE_COUNT;
-  let micStream  = null;
-  let analyser   = null;
+  let candlesLit  = CANDLE_COUNT;
+  let micStream   = null;
+  let analyser    = null;
   let micInterval = null;
   let wishingAudio = null;
+  let micInitiated = false; // prevent double-triggering
 
   // Build candles
   for (let i = 0; i < CANDLE_COUNT; i++) {
@@ -432,7 +443,6 @@
 
   // ── INTRO ──
   setTimeout(() => { bg.classList.add('visible'); }, 300);
-
   setTimeout(() => { showDialogue(); }, 1200);
 
   function showDialogue() {
@@ -467,16 +477,35 @@
   function showCake() {
     phase = 'cake';
     cakeScene.classList.add('visible');
-    initMic();
+
+    // Remove the global dialogue listeners so cake clicks don't accidentally fire them
+    document.removeEventListener('click', advance);
+    document.removeEventListener('touchstart', advanceTouch);
+
+    // Attach click handler directly to the cake wrapper
+    cakeWrapper.addEventListener('click', onCakeClick);
+    cakeWrapper.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      onCakeClick();
+    }, { passive: false });
   }
 
-  // ── MICROPHONE ──
-  function initMic() {
+  // ── CAKE CLICK → request mic then blow ──
+  function onCakeClick() {
+    if (micInitiated || candlesLit === 0) return;
+    micInitiated = true;
+
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      micStatus.textContent = 'Tap the cake to blow out the candles.';
-      cakeScene.addEventListener('click', () => { if (candlesLit > 0) blowOutCandles(); }, { once: true });
+      // No mic API available — blow out immediately on click
+      micStatus.textContent = '🕯️ Blowing out…';
+      blowText.textContent  = '✨';
+      blowOutCandles();
       return;
     }
+
+    micStatus.textContent = '🎤 Requesting microphone…';
+    blowText.textContent  = 'Blow into your microphone to extinguish the candles.';
+
     navigator.mediaDevices.getUserMedia({ audio: true, video: false })
       .then(stream => {
         micStream = stream;
@@ -496,8 +525,15 @@
         }, 80);
       })
       .catch(() => {
-        micStatus.textContent = 'Tap the cake to blow out the candles.';
-        cakeScene.addEventListener('click', () => { if (candlesLit > 0) blowOutCandles(); }, { once: true });
+        // Permission denied or error — blow out on next cake click/tap
+        micStatus.textContent = 'Mic unavailable. Tap the cake again to blow!';
+        blowText.textContent  = 'Tap the cake to blow out the candles.';
+        micInitiated = false; // allow retry
+        // One-shot fallback: next click blows directly
+        cakeWrapper.addEventListener('click', function blowFallback() {
+          blowOutCandles();
+          cakeWrapper.removeEventListener('click', blowFallback);
+        }, { once: true });
       });
   }
 
@@ -513,22 +549,18 @@
     }
 
     micStatus.textContent = '🕯️';
-    document.getElementById('blow-instruction').querySelector('p').textContent = '✨';
+    blowText.textContent  = '✨';
     setTimeout(playWishing, 1200);
   }
 
   // ── WISHING AUDIO ──
   function playWishing() {
     phase = 'audio';
-    document.removeEventListener('click', advance);
-    document.removeEventListener('touchstart', advanceTouch, { passive: false });
 
-    // Use raw GitHub URL directly — no crossOrigin needed (we're not using canvas)
     wishingAudio = new Audio('https://cdn.jsdelivr.net/gh/Muntasir-UwU/Birthday@main/wishing.mp3');
     wishingAudio.volume = 1;
     wishingAudio.addEventListener('ended', endScene, { once: true });
     wishingAudio.play().catch(() => {
-      // Autoplay blocked — show a tap-to-play prompt
       const prompt = document.createElement('div');
       prompt.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:100;cursor:pointer;';
       prompt.innerHTML = '<div style="color:rgba(255,220,150,0.9);font-family:Georgia,serif;font-style:italic;font-size:clamp(14px,3.5vw,20px);text-align:center;padding:20px;">♪ Tap anywhere to play the song ♪</div>';
@@ -565,4 +597,3 @@
 </script>
 </body>
 </html>
-
